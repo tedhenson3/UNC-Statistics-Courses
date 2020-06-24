@@ -1,0 +1,175 @@
+---
+title: "Lab 3"
+author: "Ted Henson"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Instructions
+
+**Exercises:**  1,3 (Pgs. 90-91); 1 (Pg. 93); 2,4 (Pg. 99); 1,2 (Pg. 101); 2,3,5 (Pg. 104)
+
+**Assigned:** Friday, September 14, 2018
+
+**Due:** Friday, September 21, 2018 by 5:00 PM
+
+**Submission:** Submit via an electronic document on Sakai. Must be submitted as a HTML file generated in RStudio. All assigned problems are chosen according to the textbook *R for Data Science*. You do not need R code to answer every question. If you answer without using R code, delete the code chunk. If the question requires R code, make sure you display R code. If the question requires a figure, make sure you display a figure. A lot of the questions can be answered in written response, but require R code and/or figures for understanding and explaining.
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+# Chapter 5 (Pgs. 90-91)
+
+##  Exercise 1
+```{r}
+
+ggplot(diamonds) + geom_histogram(mapping = aes(x = x))
+ggplot(diamonds) + geom_histogram(mapping = aes(x = y)) + coord_cartesian(ylim = c(0, 50))
+ggplot(diamonds) + geom_histogram(mapping = aes(x = z)) + coord_cartesian(ylim = c(0, 50))
+head(diamonds)
+
+
+#
+```
+
+The y and z variables appear to have some large values, whereas the x variable does not appear to go over 10.
+
+
+
+##  Exercise 3
+```{r}
+
+sum(diamonds$carat == .99)
+sum(diamonds$carat == 1)
+
+#
+```
+There are more 1 carat diamonds because people want to talk about their diamond and say 'this diamond is 1 carat' rather than .99.
+
+
+# Chapter 5 (Pg. 93)
+
+##  Exercise 1
+```{r}
+
+ggplot(diamonds, mapping = aes(x = x)) + geom_bar()
+
+#
+```
+
+Missing values are not put in the histogram, but a warning message is placed at the bottom letting you know that there were some missing values. In a bar chart the values are included.
+
+
+
+
+# Chapter 5 (Pg. 99)
+
+##  Exercise 2
+```{r}
+numericdiamonds <- diamonds %>% select(carat, depth, table, price, x, y, z)
+cor(numericdiamonds)
+
+ggplot(diamonds, aes(x = carat)) + geom_histogram() + facet_grid(~cut)
+
+#
+```
+
+The carat variable is the most important for predicting the price of the diamond. It is directly related to the cut of the diamond. Some lower quality diamonds are big so they are still expensive.
+
+
+##  Exercise 4
+```{r}
+library(lvplot)
+
+ggplot(diamonds, aes(x = cut, y = price)) + geom_lv()
+
+#
+```
+
+The cut of diamonds have a similar distribution of prices.
+
+
+
+# Chapter 5 (Pg. 101)
+
+##  Exercise 1
+```{r}
+library(ggplot2)
+diamonds %>%  count(color, cut) %>% 
+ggplot(diamonds, mapping = aes(x = color, y = cut))   + geom_tile(mapping = aes(fill = n))
+
+#
+```
+
+
+
+
+
+
+##  Exercise 2
+```{r}
+
+flightdata <- nycflights13::flights
+
+flightdata <- flightdata %>% group_by(dest, month) %>% summarise(totaldelay = sum(arr_delay, dep_delay) / n())
+head(flightdata)
+                                                                 
+flightdata %>%  count(dest, month) %>% 
+ggplot(flightdata, mapping = aes(x = dest, y = month))   + geom_tile(mapping = aes(fill = flightdata$totaldelay)) 
+
+
+
+#
+```
+
+It is hard to read because there are so many destinations. It would help to group the destinations in some form.
+
+
+# Chapter 5 (Pg. 104)
+install.packages("hexbin")
+##  Exercise 2
+```{r}
+
+ggplot(diamonds, mapping = aes(x = price, y = carat)) + geom_boxplot(mapping = aes(group = cut_number(price, 20)))
+
+#
+```
+
+##  Exercise 3
+```{r}
+
+
+
+
+diamonds$volume <- sqrt(diamonds$x^2 + diamonds$z^2 +  diamonds$y^2)
+
+large <- diamonds %>% filter(volume > mean(volume)+2*sd(volume))
+
+small <- diamonds %>% filter(volume < mean(volume)-2*sd(volume))
+
+
+ggplot(small, mapping = aes(x = price, y = carat)) + geom_boxplot(mapping = aes(group = cut_number(price, 5)))
+
+ggplot(large, mapping = aes(x = price, y = carat)) + geom_boxplot(mapping = aes(group = cut_number(price, 5)))
+
+
+#
+```
+
+
+It is about what you would expect, the larger diamonds have some high outliers.
+
+##  Exercise 5
+```{r}
+ggplot(diamonds) + geom_point(mapping = aes(x = x, y = y)) + coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+#
+```
+
+
+There are few values where the x or y value by itself would make it an outlier, they are all within the normal range. But there are a few x values that have unusually small y values, and some large y values with unusually small x values.

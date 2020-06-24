@@ -1,0 +1,145 @@
+---
+title: "STOR 455 Assignment 2"
+author: "Ted Henson"
+date: "September 9, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tibble)
+library(readr)
+```
+
+```{r}
+setwd("~/STOR 455")
+UsedCarLot <- read_csv("UsedCarLot.csv")
+honda <- UsedCarLot[which(UsedCarLot$make == 'Honda'),]
+accord <- honda[which(honda$model == 'Accord'),]
+
+
+
+```
+##Exercises 1 & 2
+
+```{r}
+cardata <- accord
+cardata$age <- 2018 - cardata$year
+linear <- lm(price~age, data = cardata)
+plot(x = cardata$age, y = cardata$price)
+abline(linear)
+summary(linear)
+```
+
+The slope estimate of -2.2085 means that for every year the honda accord ages, it's value decreases by $2,2085. The negative slope makes sense because a car's price will decrease with age.
+
+
+##Exercise 3
+
+```{r}
+qqnorm(linear$residuals)
+qqline(linear$residuals)
+hist(linear$residuals)
+
+```
+
+
+The data appears to be mostly linear, although there is a slight skew in the upper quantile. Our model overprices cars that are very old.
+
+
+##Exercise 4
+
+```{r}
+outlier <- which(linear$residuals == max(abs(linear$residuals)))
+print(outlier)
+students <- rstudent(linear)
+standard <- rstandard(linear)
+students[outlier]
+standard[outlier]
+```
+
+Both student and starndized residuals are more than 3 standard deviations away from the mean so the data point should probably be classified as an outlier.
+
+
+
+##Exercise 5
+
+```{r}
+interval <- confint(linear, level = .90)
+interval
+```
+We can say with 90% confidence that the slope of the best fine line of these variables is between the interval (-2.45566, -1.961407).
+
+
+
+## Exercise 6
+
+```{r}
+
+cor.test(cardata$price, cardata$age)
+
+summary(linear)
+
+
+anova(linear)
+
+```
+
+
+## Exercise 7
+
+```{r}
+
+#subset for just 5 year old cars?
+theanswer <- linear$coefficients[2]*5 + linear$coefficients[1]
+theanswer
+
+```
+
+
+Our model predicts that a five year old Honda Accord will cost $29,0895. 
+
+
+```{r}
+whoknows <- data.frame(age=5)
+predict.lm(linear, whoknows, interval = 'confidence')
+
+```
+
+
+
+If repeated samples were taken and 90% confidence intervals were computed, 90% of the intervals computed would contain the mean price at this age.
+
+```{r}
+predict.lm(linear, whoknows, interval = 'prediction')
+
+```
+
+
+If repeated samples were taken and 90% confidence intervals were computed, 90% of the intervals computed would contain the price of an individual car at this age.
+
+
+##Exercise 8
+
+```{r}
+
+y  = linear$coefficients[1] / -linear$coefficients[2]
+y
+
+
+```
+
+According to the model a car over 18.17141 years of age should be free. This phenomenon shows that our model does not do a good job of estimating prices for cars that are very old, because although an 18.17 year old car would be very cheap, it would not be free.
+
+
+##Exercise 9
+```{r}
+
+linear <- lm(log(price)~log(age), data = cardata)
+plot(x = log(cardata$age), y = log(cardata$price))
+abline(linear)
+summary(linear)
+
+```
+
+This model has a lower R squared than the standard regression. This model may be better for very new and very old cars, but on average this model performs worse.

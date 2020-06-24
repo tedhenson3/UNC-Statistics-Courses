@@ -1,0 +1,187 @@
+---
+title: "HW 4"
+author: "Ted Henson"
+date: "2/7/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,eval = T)
+```
+
+
+# Problem 4
+# a)
+```{r}
+library(faraway)
+data(gala)
+gala = gala[,c(-2)]
+modp = glm(Species ~ Area + Elevation + Nearest + Scruz + Adjacent, family = poisson, data = gala)
+# calculate deviance and Pearson residuals
+coef(modp)
+deviance(modp)
+```
+
+The values of the coefficients and the deviance is shown in the output above.
+
+# b)
+```{r}
+y = gala$Species
+mu = y
+eta = log(mu)
+d.eta.d.mu = 1/mu
+var.mu = mu
+z = eta + (y-mu)*(d.eta.d.mu)
+w = 1/((d.eta.d.mu)^2*(var.mu))
+
+
+```
+The form of the adjusted dependent variable is:
+```{r, echo = T}
+z = eta + (y-mu)*(d.eta.d.mu)
+```
+The eta is `r eta`, the d.eta.d.mu is `r d.eta.d.mu`, the variance of mu is `r var.mu`, and the weights are `r w`.
+
+# c)
+```{r}
+lmod = lm(z ~ Area + Elevation + Nearest + Scruz + Adjacent, weights = w, data = gala)
+coef(lmod)
+deviance(lmod)
+```
+
+The intercept is fairly close to the values computed by the glm function. The Area and Adjacent variables are very close to the final values. The other values appear to be on the right track, but are not close to their final values yet.
+
+# d)
+```{r}
+eta = lmod$fitted.values
+mu = exp(eta)
+d.eta.d.mu = 1/mu
+
+z = eta + (y-mu)*(d.eta.d.mu)
+
+w = mu
+lmod = lm(z ~ Area + Elevation + Nearest + Scruz + Adjacent, weights = w, data = gala)
+coef(lmod)
+deviance(lmod)
+
+```
+
+This deviance is fairly close to the glm deviance, but still can probably converge closer.
+
+# e)
+```{r}
+for(i in c(1:10)){
+  
+
+eta = lmod$fitted.values
+mu = exp(eta)
+d.eta.d.mu = 1/mu
+
+z = eta + (y-mu)*(d.eta.d.mu)
+w = mu
+lmod = lm(z ~ Area + Elevation + Nearest + Scruz + Adjacent, weights = w, data = gala)
+print(coef(lmod))
+print(paste('Iteration', i, 'Deviance:', as.numeric(deviance(lmod))))
+}
+
+```
+
+The deviance is very close to the target after 10 iterations and appears to have converged. All of the coefficients are very close to the glm's as well.
+
+# Problem 6
+# a)
+```{r}
+data("worldcup")
+worldcup$Tackles.per.90.min = (worldcup$Tackles / worldcup$Time)*90
+worldcup$Passes.per.90.min = (worldcup$Passes / worldcup$Time)*90
+poi.mod = glm(Shots ~ Team + Position + Tackles.per.90.min + Passes.per.90.min, family = 'poisson', data = worldcup)
+summary(poi.mod)
+
+```
+
+Tackles and passes per 90 minutes have a negative relationship with shots per 90 minutes. Passes per 90 minutes is significant by the .0005 threshold and Tackles per 90 minutes may or may not be significant.
+
+# b)
+```{r}
+
+leverage = influence(poi.mod)$hat
+leverage = leverage[order(leverage, decreasing = T)]
+leverage[1]
+gali=influence(poi.mod)
+halfnorm(gali$hat)
+
+```
+
+Amoah has high leverage since he is a forward, plays for Gahana, and has a lot of tackles per 90 minutes. These three combinations are unusual predictor values and have the potential to affect the fit of the model.
+
+# c)
+```{r}
+betas = influence(poi.mod)$coefficients
+answer = abs(betas[, 'Tackles.per.90.min'])
+answer = answer[order(answer, decreasing = T)]
+answer[1]
+
+
+```
+
+Amoah has high influence since he has the unusual predictor values mentioned above, but he also has zero shots, influencing the model when the weights would predict he would have a lot of shots.
+
+
+
+# d)
+```{r}
+cook = cooks.distance(poi.mod)
+cook = cook[order(cook, decreasing = T)]
+cook[1]
+
+```
+
+Gyan has the highest number of shots cross the entire dataset and a low number of passes per 90 minutes compared to his team.
+
+# e)
+```{r}
+#jacknife residuals
+halfnorm(rstudent(poi.mod))
+
+```
+
+The player with the largest jacknife residual is `r worldcup[212,]`. As with the Cook's distance, Gyan has the highest number of shots cross the entire dataset and a low number of passes per 90 minutes compared to his team.
+
+# f)
+```{r}
+plot(poi.mod$fitted.values, poi.mod$residuals)
+abline(b=0, a = 0)
+```
+
+The horizontal line is drawn at residuals of 0. Ideally the points should be normally distributed throughout the line. This plot indicates the residuals are larger on the lower quantiles, and there is an especially large residual for one point fitted at almost 0 shots.
+
+# g)
+```{r}
+plot(worldcup$Shots, worldcup$Tackles)
+plot(worldcup$Shots / 90, worldcup$Tackles.per.90.min)
+plot(log(worldcup$Shots), worldcup$Tackles.per.90.min)
+```
+
+The plots appear to show that there is a slightly negative relationship between the linearized shots per game and the tackles per 90 minutes.
+
+# h)
+```{r}
+x=log(worldcup$Tackles.per.90.min)
+y = residuals(poi.mod, type = 'partial')
+y = y[,3]
+slope = coef(poi.mod)['Tackles.per.90.min']
+names(slope) = NULL
+plot(x,y)
+
+abline(0,slope)
+
+```
+
+
+# f)
+```{r}
+plot(poi.mod$fitted.values,log(worldcup$Shots))
+abline(a = 0, b = 1)
+```
+
+Our link function may not be the best for our data as the plot of fitted values versus the linearized response shows that the fitted values are much higher than the linearized response.

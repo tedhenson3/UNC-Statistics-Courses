@@ -1,0 +1,173 @@
+---
+title: "HW 1"
+author: "Ted Henson"
+date: "August 29, 2018"
+output:
+html_document: default
+html_notebook: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+### Exercise 1
+
+Part A
+
+
+```{r}
+library(Stat2Data)
+library(tibble)
+data(HighPeaks)
+#load("C:/Users/tedhe/OneDrive/Documents/R/win-library/3.5/Stat2Data/data/HighPeaks.rda")
+HighPeaks <- as_tibble(HighPeaks)
+
+leastsquares <- lm(Time ~ Ascent, data = HighPeaks)
+print(paste("Least Squares line: ", 'Time = ',  leastsquares$coefficients[2], 'Ascent', ' + ', leastsquares$coefficients[1], sep = ''))
+
+```
+
+Part B
+
+
+```{r}
+plot(x = HighPeaks$Ascent, y = HighPeaks$Time, xlab = 'Ascent', ylab = 'Time', main = 'Plot Of Ascent Versus Time')
+abline(leastsquares)
+```
+
+
+The plot looks somewhat linear, however there is a decent amount of variation.
+
+
+Part C
+```{r}
+HighPeaks$Peak <- gsub(' ', '', as.character(HighPeaks$Peak), fixed = T)
+
+tooearlyfothis <- HighPeaks[which(HighPeaks$Peak == "Mt.Marcy"), 'Ascent']
+
+theprediction <- leastsquares$coefficients[2] * tooearlyfothis + leastsquares$coefficients[1]
+print(paste(theprediction, 'hours is the time predicted for Mt. Marcy'))
+
+theresidual <-  HighPeaks[which(HighPeaks$Peak == "Mt.Marcy"), 'Time'] - theprediction
+print(paste(theresidual, 'is the residual for Mt. Marcy'))
+
+
+```
+
+
+Part D
+```{r}
+theworst <- max(abs(leastsquares$residuals))
+
+index <- which(leastsquares$residuals == theworst)
+
+themountain <- HighPeaks[index, 'Peak']
+print(themountain)
+print(theworst)
+
+```
+
+
+Part E
+
+```{r}
+plot(y = leastsquares$residuals, x = leastsquares$fitted.values, xlab = 'Predictions', ylab = 'Residuals', main = 'Plot Of Predictions versus Residuals')
+abline(a= 0, b = 0)
+
+
+```
+
+
+
+The distribution of errors appears to be centered around zero for the residual plot, showing zero mean.
+
+
+
+
+
+```{r}
+qqnorm(leastsquares$residuals)
+qqline(leastsquares$residuals)
+```
+
+
+
+Linearity may not be satisfied because there may be some relationship between the errors on the lower quantile.
+
+
+
+
+
+```{r}
+hist(leastsquares$residuals)
+
+```
+
+
+
+
+
+There is a skew right, so perhaps our errors are not independent as shown by the histogram and normal quantile plot.
+
+
+
+### Exercise 2
+
+
+Part A
+```{r}
+data(Perch)
+plot(x = Perch$Length, y = Perch$Weight, xlab = 'Length', ylab = 'Weight', main = 'Plot of Length Versus Weight')
+
+```
+
+
+The plot looks exponential rather than linear.
+
+Part B
+```{r}
+model <- lm(log(Perch$Length) ~ log(Perch$Weight))
+summary(model)
+
+
+```
+
+
+
+```{r}
+ggplot(Perch, mapping = aes(log(Length), log(Weight))) + geom_point() + xlab('Length') + ylab ('Weight') +  ggtitle('Plot Of length Versus Weight') + 
+geom_smooth()
+
+```
+
+
+This plot looks linear after the logistic transformation.
+
+Part C
+
+
+
+```{r}
+
+qqnorm(model$residuals)
+qqline(model$residuals)
+hist(model$residuals)
+
+```
+
+
+
+There appears to be some relationship between the errors in the lower quantile as shown by the histogram and qqnorm plot.
+
+
+
+
+Part D
+```{r}
+expectedweight <- 20*model$coefficients[2] + model$coefficients[1]
+expectedweight
+
+```
+

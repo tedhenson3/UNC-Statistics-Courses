@@ -1,0 +1,211 @@
+---
+title: "HW 5"
+author: "Ted Henson"
+date: "2/24/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, eval = T)
+```
+
+
+# Chapter 3 Problem 3, page 66
+
+# a)
+```{r}
+library(faraway)
+data(seeds)
+library(tidyverse)
+covered = seeds %>% dplyr::filter(covered == 'yes')
+non.covered = seeds %>% dplyr::filter(covered == 'no')
+par(mfrow=c(1,2))
+plot(covered$germ, covered$moisture, main = 'Covered')
+plot(non.covered$germ, non.covered$moisture, main = 'Non Covered')
+
+
+
+```
+
+The moisture and germination percentage appear to be negatively correlated when the box is covered, but positively correlated when the box is uncovered.
+
+# b)
+```{r}
+seeds.new = seeds
+seeds.new$box = NA
+seeds.new$box[1:6] = 1
+seeds.new$box[7:12] = 2
+seeds.new$box[13:18] = 3
+seeds.new$box[19:24] = 4
+seeds.new$box[25:30] = 5
+seeds.new$box[31:36] = 6
+seeds.new$box[37:42] = 7
+seeds.new$box[43:48] = 8
+seeds.new$box = as.factor(seeds.new$box)
+library(ggplot2)
+covered = seeds.new %>% dplyr::filter(covered == 'yes')
+non.covered = seeds.new %>% dplyr::filter(covered == 'no')
+ggplot(covered, aes(germ, moisture, colour = box)) + geom_point()
+ggplot(non.covered, aes(germ, moisture, colour = box)) + geom_point()
+
+
+
+```
+
+Yes, it appears there may be a box effect. Seeds within the same box follow a linear trajectory depending on covered versus uncovered. 
+
+# c)
+```{r}
+seeds.new$germ = seeds.new$germ / 100
+seeds.new = seeds.new[complete.cases(seeds.new),]
+mod = glm(germ ~ box  + moisture, family = quasibinomial, data = seeds.new)
+summary(mod)
+mod2 = glm(germ ~ covered  + moisture, family = quasibinomial, data = seeds.new)
+summary(mod2)
+mod3 = glm(germ ~ moisture, family = quasibinomial, data = seeds.new)
+summary(mod3)
+par(mfrow=c(2,2))
+plot(mod)
+par(mfrow=c(2,2))
+
+plot(mod2)
+par(mfrow=c(2,2))
+
+plot(mod3)
+```
+
+The model with just moisture should be chosen since the plots shown above all look about the same, so the model with the least number of predictors should be chosen in this scenario. All predictors aside from the moisture had large p values.
+
+# d)
+```{r}
+
+anova(mod3, mod)
+pchisq(.025703, df = 7, lower = F)
+
+```
+
+The deviance does not decrease by much with the inclusion of the box parameter. The chisq test confirms with a p value of 1 that is it extremely unlikely that the box parameter is statistically significant.
+
+# e)
+```{r}
+seeds.new[which.max(predict(mod3, non.covered)), 'moisture']
+seeds.new[which.max(predict(mod3, covered)), 'moisture']
+
+
+```
+
+The maximum germenition occurs at a moisture of 1 for both covered and uncovered boxes.
+
+# f)
+```{r}
+plot(mod3$fitted.values, mod3$residuals)
+abline(a = 0, b= 0)
+```
+
+The residuals are strictly negative for values fitted at the maximum germination value. In the middle quartiles, the residuals are mostly positive, but some negative. There is one particularly large negative residual for the smallest fitted value.
+
+# g)
+```{r}
+seeds.new$residuals = mod3$residuals
+ggplot(seeds.new) + geom_point(aes(x = moisture, y = residuals,
+                                colour = covered)) + geom_hline(aes(yintercept = 0))
+```
+
+As with the previous plot, the residuals appear to be larger at extreme values of moisture. This plot shows that residuals may be larger for uncovered boxes, but there is not substantial visual evidence or statistical evidence based on this plot.
+
+# h)
+```{r}
+# leverages versus residuals
+plot(y = residuals(mod3), x = hatvalues(mod3), xlab = 'Leverages', ylab = 'Residuals')
+
+```
+
+There are a few points (one in particular) with especially high leverages and large negative residuals.
+
+# Chapter 5 Problem 2, page 99
+
+# a)
+```{r}
+data("salmonella")
+plot(salmonella$colonies, salmonella$dose)
+salmonella.2 = salmonella
+salmonella.2$dose = as.factor(salmonella$dose)
+ggplot(salmonella.2, aes(y = colonies, x = dose)) + geom_bar(aes(fill = dose), 
+           position = "dodge", stat = "summary", fun.y = "mean")
+
+```
+
+The scatter plot and bar plot of means by dose shows that in general the higher the dose the more colonies. A dose of 100 produces the most colonies. After going above a dose of 100, the number of colonies decrease.
+
+```{r}
+summary = salmonella %>% group_by(dose) %>% summarise(mean = mean(colonies),
+                                                      var  = var(colonies))
+plot(summary$mean, summary$var)
+```
+
+There is high variability for doses with a very high mean so there may be overdispersion, and an overdispersion parameter would be needed to account for this.
+
+
+
+# c)
+```{r}
+poimod = glm(colonies ~ dose, data = salmonella.2, family = 'poisson')
+summary(poimod)
+deviance(poimod)
+```
+
+Yes you could do a log transformation and do standard linear regression as opposed to poisson. This will be done below.
+```{r}
+mod = lm(log(colonies) ~ dose, data = salmonella.2)
+summary(mod)
+```
+
+# d)
+```{r}
+qqnorm(poimod$residuals)
+qqline(poimod$residuals)
+```
+
+The residuals appear to be larger in the upper quantiles, and to some extent the lower quantiles.
+
+# e)
+```{r}
+salmonella$dose = as.numeric(salmonella$dose)
+qpoimod = glm(colonies ~ dose + I(dose^2), data = salmonella, family = 'quasipoisson')
+summary(qpoimod)
+deviance(qpoimod)
+```
+
+Yes we can determine the deviance, it is shown above. As shown below, the residuals are fairly normal so it is a fairly good fit.
+
+# f)
+```{r}
+plot(qpoimod$fitted.values, qpoimod$residuals)
+abline(0, 0)
+```
+
+The residuals appear to be mostly normally distributed across the range of fitted values although there is one especially large positive residual
+
+# g)
+```{r}
+salmonella$fitted = qpoimod$fitted.values
+ggplot(salmonella, aes(x = colonies, y = dose, colour = fitted)) + geom_point()
+#plot(rep(mean(qpoimod$fitted.values), nrow(salmonella)), salmonella$colonies)
+```
+
+# h)
+```{r}
+val = data.frame(dose = 500)
+pred = predict(qpoimod, newdata = val, se.fit = T)
+upper = pred$fit + qnorm(.025,lower.tail=FALSE)*pred$se.fit
+lower = pred$fit - qnorm(.025,lower.tail=FALSE)*pred$se.fit
+interval = c(lower, upper)
+interval
+```
+
+The predicted mean colonies given a dose of 500 would be `r pred$fit` and a 95% confidence interval for the mean would be `r interval`
+
+# i)
+The maximum predicted response occurs at a dose of `r salmonella[which.max(qpoimod$fitted.values), 'dose']`

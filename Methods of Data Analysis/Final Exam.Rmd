@@ -1,0 +1,495 @@
+
+---
+title: "Final Exam"
+name: Ted Henson
+date: "12/8/2018"
+output:
+  html_document:
+  df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("~/STOR 455")
+```
+
+###Question 1###
+
+On January 28, 1986, the NASA space shuttle program launched its 25th shuttle flight from Kennedy Space Center in Florida. Seventy-three seconds into the flight, the external fuel tank collapsed and spilled liquid oxygen and hydrogen. These chemicals ignited, destroying the space shuttle Challenger and killing all seven crew members.
+
+Investigations showed that an O-ring seal in the right solid rocket booster failed to isolate the fuel supply. Because of their size, the rocket boosters were built and shipped in separate sections. A forward, center, and aft field joint connected the sections. Two O-rings (one primary and one secondary), which resemble giant rubber bands 0.28 inches thick, but 37 feet in diameter, were used to seal the field joints between each of the sections.
+
+The O-ring seals were intended to stop the gases inside the solid rocket booster from escaping. However, the cold outside air temperature caused the O-rings to become brittle and fail to seal properly. Gases at 5800&deg;F escaped and burned a hole through the side of the rocket booster.
+
+Could this disaster have been avoided? The problem with the O-rings was recognized by the engineers who designed them. One day before the flight, the predicted temperature for the launch was 26&deg;F to 29&deg;F. Concerned that the O-rings would not seal at these temperatures, the engineers opposed the launching of the Challenger and tried to convince officials not to launch the shuttle. Even though they understood the severity of the problem, the engineers were unable to properly communicate their evidence to officials.
+
+Prior to the ill-fated Challenger flight, the solid rocket boosters for 23 shuttle launches were recovered and inspected for damage. Even though O-ring damage was present in some of the flights, they were not damaged enough to allow any gas to escape. Since damage was very minimal, all 23 prior flights were considered a successes by NASA.
+
+The data from these 23 launches are available as Challenger.csv. The data include the ambient temperature at the time of each launch and whether the launch was successful, where a successful launch is defined as having no evidence of damage on the O-rings (0 represents a damaged O-ring and 1 represents a successful launch with no O-ring damage).
+
+####Part A####
+
+Construct and plot a logistic regression model using successful launch as the response variable and temperature as the explanatory variable.
+
+```{r}
+library(readr)
+library(ggplot2)
+library(tidyverse)
+space <- read_csv("Challenger.csv")
+#View(space)
+
+
+fit <- glm(Successful_Launch ~ Temperature, data = space, family = 'binomial')
+
+
+B0 = summary(fit)$coef[1]
+B1 = summary(fit)$coef[2]
+
+
+
+
+plot(jitter(Successful_Launch, amount = .1) ~ Temperature, data = space)
+curve(exp(B0+B1*x)/(1+exp(B0+B1*x)),add=TRUE, col = "red")
+
+
+```
+
+####Part B####
+
+Is there evidence that the overall model is useful? Conduct the appropriate hypothesis test.
+
+```{r}
+summary(fit)
+
+G = 1 - pchisq(28.267 - 20.315, 1)
+G
+
+```
+
+The null hypothesis is that the temperature at the time of the launch has no predictive value on whether or not the launch is a success (the coefficient is 0). The alternative hypothesis is that the ambient temperature does have predictive value (the coefficient is nonzero). Our computed p value of 0.004803426 shows that this model is most likely significant. Both of our coefficients are also below the .05 significance level as shown by the summary.
+
+
+####Part C####
+
+The temperature during the launch of the Challenger was 31&deg;F. What is the probability of a successful launch at this temperature? Estimate this probability from your model and the plot produced in part A.
+
+***
+```{r}
+exp(B0+B1*31)/(1+exp(B0+B1*31))
+```
+
+
+The probability is extremely low that it will be a successful launch, essentially 0 as shown by the calculation above.
+
+***
+
+####Part E####
+
+How do the odds of a successful launch change for each 1&deg;F decrease in temperature? Construct a confidence interval for the odds ratio and include a sentence interpreting the interval in the context.  
+
+```{r}
+exp(cbind("Odds Ratio" = coef(fit), confint.default(fit, level = .95)))
+
+
+
+```
+
+***
+
+Our odds ratio for Temperature is 1.261325e+00, which means for every 1 unit decrease in Temperature, our odds of having a successful launch decrease by 1.261325e+00. We are 95 percent confident that the true odds ratio for Temperature is between the interval 1.020225e+00 and 1.5594017.
+
+
+***
+
+####Part F####
+
+Suppose that you are one of the engineers working for NASA and are attempting to convince the officials not to proceed with the launch. Write a (brief) statement to these NASA officials convincing them not to launch. 
+
+***
+
+
+Because the temperature outside is 31 degrees, our model predicts that it is extremely likely that the launch will fail. It will only succeed 0.0003912171 percent of the time due to random chance. 
+
+
+***
+
+
+###Question 2###
+
+The Driving data set contains data collected by a safety analyst to compare how well experienced and inexperienced drivers drive on three types of roads: paved, gravel, and dirt. To measure driving performance, the analyst recorded the time in seconds that each driver used to make steering corrections on each type of road.
+
+####Part A####
+
+Produce side-by-side box plots and summary statistics for the correction times for each type of road (ignoring the experience of the driver). From the graph and summary statistics, comment on whether you think that there are significant differences in the correction times among the three road types and any concerns you see about the conditions for constructing a oneway ANOVA for means model.
+
+```{r}
+Driving <- read_csv("Driving.csv")
+#View(Driving)
+
+ggplot(Driving, aes(x = Road_Type, y= Correction_Time)) + geom_boxplot()
+
+summary <- Driving %>% group_by(Road_Type)  %>% 
+summarise(samplesize = n(), average = mean(Correction_Time), standard_deviation = sd(Correction_Time))
+
+totalsummary <- Driving %>% summarise(samplesize = n(), average = mean(Correction_Time), standard_deviation = sd(Correction_Time))
+totalsummary$Road_Type = 'all'
+answer <- rbind(totalsummary, summary)
+answer <- answer %>% dplyr::select(Road_Type, everything())
+answer
+
+bartlett.test(Correction_Time ~ Road_Type, Driving)
+
+
+```
+
+Although the mean of the Correction Time for Paved roads versus the Dirt Roads may seem different, it is only a couple of standard deviations different. Our Boxplots show that there is a lot of overlap between the spread. Both of these factors probably means there is not a difference, but we need a test to confirm.  All of our standard deviations are pretty similar to each other, and our bartlett test gives us a p value of .5875 so there probably is not a difference in the variances, so it is okay to proceed with the anova for means model. 
+
+
+
+####Part B####
+
+Run the one way ANOVA for difference in mean correction time between road types. State hypotheses of the test and provide a conclusion in the context of the data. Are the conditions met to perform this test? Comment on the conditions below.
+
+If there are significant differences, run hypothesis tests to determine where those differences occur, citing the hypotheses and your conclusions.
+
+```{r}
+dif <- aov(Correction_Time ~ Road_Type, Driving)
+summary(dif)
+library(agricolae)
+qqnorm(dif$residuals)
+qqline(dif$residuals)
+hist(dif$residuals)
+plot(x = dif$fitted.values, y = dif$residuals)
+abline(a = 0, b = 0)
+tukey.test <- TukeyHSD(dif)
+tukey.test
+```
+
+***
+Based on our histogram and qqnorm plot, our residuals appear to be very normal (satisfying normality amongst residuals). With regards to independence amongst errors, there may be a relationship between errors in the upper quantiles as shown by the qqnorm plot; however, it is not egregious.  Our plot of fitted values versus the residuals shows that these errors are centered around zero (satisfying zero mean),  their variances are constant throughout (satisfying constant variance), and the residuals are linear (no curve).
+
+
+The null hypothesis is that there is no difference in mean correction time between any pair of road types. The alternative hypothesis is that there is a difference in mean correction time between at least one pair of road types. Our one way anova model gives us an F value of 4.251 and a corresponding p value of 0.0282, so there most likely is at least one pair of road types with a significant difference. Our TukeyHSD test gives us a p value of 0.0220633 that the difference in mean correction time between the Paved roads and Dirt roads happened due to random chance. Therefore, since 0.0220633 is below the .05 significance level, we reject the null, and conclude that there is a difference in mean correction time between Paved roads and Dirt roads.
+
+***
+
+####Part C####
+
+Run the two way ANOVA for difference in mean correction time between road types and driver experience, including the interaction. State hypotheses for each test and provide conclusions in the context of the data. Are the conditions met to perform this test? Comment on the conditions below.
+
+If there are significant differences, run hypothesis tests to determine where those differences occur, citing the hypotheses and your conclusions.
+
+```{r}
+
+dif <- aov(Correction_Time ~ Road_Type + Experience + Road_Type*Experience, Driving)
+summary(dif)
+library(agricolae)
+qqnorm(dif$residuals)
+qqline(dif$residuals)
+hist(dif$residuals)
+plot(x = dif$fitted.values, y = dif$residuals)
+abline(a = 0, b = 0)
+tukey.test <- TukeyHSD(dif)
+tukey.test
+
+
+```
+
+***
+
+Our null Hypothesis is that driver experience, road type, and their corresponding interaction, has no relationship to mean correction time. Our alternative hypothesis is that there is at least one significant difference in means due to one of these variables (their coefficient is nonzero).
+
+Our plot of residuals versus our fitted values shows that our residuals are centered around zero (zero mean), their variances appear to be constant throughout, and they appear to be linear. Our qqnorm plot shows that our errors appear to be independent, although there may be a relationship between the errors in the far lower quantile, and also in the extreme upper quantile. Our histogram of residuals shows that our residuals are certainly not normal, as there are two peaks in the graph. They appear to be bimodal.
+
+The summary of our model gives us p values of 0.00965 for Road Type and 0.00772 for Driver experience. These are both below the .05 significance level, so these predictors are most likely significant, so we reject the null that their coefficients are zero. The interaction term has a p value of 0.24903 so we fail to reject the null that this coefficient is zero.
+
+Our TukeyHSD test shows us that there are most likely significant differences in mean correction time between paved roads and dirt roads (p value of 0.0072752), and beginner experience and advanced experience (p value of 0.0077221). Other differences found with p values below .05: Dirt:Beginner-Gravel:Advanced, Dirt:Beginner-Paved:Advanced. These differences were most likely simply due to differences in roads and experience, and not their interaction. These p values represent the chances that these differences found were due to random chance, therefore we reject the null that there is no difference in these pairs.
+
+
+***
+
+####Part D####
+
+Create interaction plots for correction times based on the experience of the driver and the road types. Comment below on any notable interactions.
+
+```{r}
+#interaction.plot(Driving$Road_Type,Driving$Experience,Driving$Correction_Time)
+interaction.plot(Driving$Experience,Driving$Road_Type,Driving$Correction_Time)
+
+
+```
+
+***
+
+Our plot confirms what our Tukey HSD test deemed as different, as there are significant differences in road type correction times between paved and dirt, and beginneers versus advanced, in addition to the other differences discussed above.
+***
+
+###Question 3###
+
+Suppose that you have been retained as a statistical consultant for a wine co-operative, and have been asked to analyze their data. Each row in the wine_quality_red and wine_quality_white data sets represents data on a particular wine, and the columns are attributes. The last column (quality) is the rated quality of the wine, which is an integer score between 0 (very bad) and 10 (excellent) made by wine experts. Your clients are interested in predicting the quality score based on the attributes. They would also like to get some sense of which attributes are more important for this task, and their role in the prediction procedure.
+
+####Part A####
+
+Construct a multiple regression model to predict the quality rating of a red wine based on all of the attributes included in the data set. Perform a hypotheses test to determine the effectiveness of the model and note which predictors are not particularly useful in the model. It may be useful for later parts of the question to run the code below (after importing the dataset), which removes missing values from the data set
+
+```{r}
+library(readr)
+wine_quality_red <- read_csv("wine_quality_red.csv")
+wine_quality_red = na.omit(wine_quality_red) #removes missing values
+```
+
+```{r}
+#View(wine_quality_red)
+
+full <- lm(quality ~ ., data = wine_quality_red)
+summary(full)
+
+```
+
+Our null hypothesis is that there is no relationship between a wine's quality and these variables (the variables coefficients are nonzero, using an intercept would be just as good). The alternative hypothesis is that this model is useful. Our F value of 81.35 and p value of 2.2e-16 shows that this model is almost certainly significant. Therefore, we reject the null that this model is not useful. Our adjusted R squared of .3561 shows that this relationship is weak. We conclude that there is most likely a weak relationship between these variables and a wine's quality.
+
+The summary of our model deemed that a wine's fixed_acidity, citric_acid, residual_sugar,
+and density are most likely not significant predictors (any relationship found was due to random chance). Suprisingly the intercept of our model was not deemed significant either.
+
+
+####Part B####
+
+Construct a multiple regression linear model to predict a wine's quality with the _lowest Mallow's Cp_ using any/all of the variables. Do not use transformations or second or greater order terms. Briefly explain the process that you used to find this best model.
+
+```{r}
+
+
+none <- lm(quality ~ 1, data = wine_quality_red)
+# 
+# 
+# Cp455 <- function(modred,modfull){
+#   MSE=(summary(modfull)$sigma)^2
+#   cp=extractAIC(modred,scale=MSE)
+#   return(cp[2])
+# }
+# 
+# 
+# 
+# CP <- Cp455(none, full)
+# 
+# 
+# 
+# cpmod <- step(none, scope = list(upper = full), scale = CP, direction = 'both')
+# 
+# summary(cpmod)
+
+# 
+# cpmod <- step(none, scope = list(upper = full), scale = CP, direction = 'forward')
+# summary(cpmod)
+# 
+# cpmod <- step(none, scope = list(upper = full), scale = CP, direction = 'backward')
+# summary(cpmod)
+
+
+library(MASS)
+# 
+AIC = stepAIC(none, scope = list(upper = full),  direction = 'both')
+summary(AIC)
+
+```
+
+***
+I ran stepwise regression choosing AIC as the scale (equivalent to mallow CP). I ran this regression using both directions. All of our predictions are significant below the .05 significance level. Our p value is basically 0, and the Adjusted R-squared is 0.3567.
+
+
+***
+
+####Part C####
+
+Perform a test to determine/confirm that your model constructed in part A is not significantly better than your model from part B. Include the hypotheses and conclusion. 
+
+```{r}
+
+anova(AIC, full)
+
+
+```
+
+Our null hypothesis is that our model found using stepwise regression is better than our full model. The alternative is that the full model is better. Our nested f test shows that despite the better Residual sum of squares, the increase in predictors did not make up for the small increase in residual sum of squares, as shown by our p value of 0.6124. Therefore, we keep the null that our stepwise model is better.
+
+####Part D####
+
+A second data set contains similar data for white wines. Use your best model from part B to predict the quality of the white wines. Calcuate the cross-validation correlation and shrinkage. Does the model constructed in part B appear to be similarly effective for predicting the quality of both red and white wines? Analyze the holdout residuals and comment on the appropriateness of the cross validation procedures. 
+
+It may again be useful to run the code below (after importing the dataset), which removes missing values from the data set.
+
+
+```{r}
+wine_quality_white <- read_csv("wine_quality_white.csv")
+
+wine_quality_white <-na.omit(wine_quality_white)  #removes missing values
+```
+
+```{r}
+predictions=predict(AIC,newdata=wine_quality_white)
+crosscor=cor(wine_quality_white$quality,predictions)
+
+holdout_residuals <- wine_quality_white$quality- predictions
+
+mean(abs(holdout_residuals))
+mean(abs(AIC$residuals))
+
+sd(holdout_residuals)
+
+sd(AIC$residuals)
+
+shrinkage = .3595- crosscor^2
+shrinkage
+
+```
+
+***
+The standard deviation of our holdout residuals is similar to the standard deviation of our original residuals. Our mean of the absolute of our holdout residuals is larger than our original residuals, but they are both small. Our shrinkage of .14 does raise a little bit of concern, as we are accounting for 14% less variataion for white wines, as we did for red wines.
+
+***
+
+####Part E####
+
+Using your best model from Part B, predict with 95% confidence the quality rating of a _single_ wine with the following attributes:
+
+fixed acidity = 6.1
+
+volatile acidity = 0.59
+
+citric acid = 0.17
+
+residual sugar = 8.9
+
+chlorides = 0.033
+
+free sulfur dioxide = 48
+
+total sulfur dioxide = 102
+
+density = 0.9911
+
+pH = 3.12
+
+sulphates = 0.35
+
+alcohol = 11.8
+
+```{r}
+top = data.frame(fixed_acidity = 6.1, 
+
+volatile_acidity = 0.59, 
+
+citric_acid = 0.17, 
+
+residual_sugar = 8.9, 
+
+chlorides = 0.033, 
+
+free_sulfur_dioxide = 48, 
+
+total_sulfur_dioxide = 102, 
+
+density = 0.9911, 
+
+pH = 3.12, 
+
+sulphates = 0.35, 
+
+alcohol = 11.8)
+
+predict.lm(AIC, top, interval = 'prediction', level = .95)
+
+
+```
+
+###Question 4### 
+
+Ashton et al. (2007) measured the carapace length (in mm) of 18 female gopher tortoises (Gopherus polyphemus) in Okeeheelee County Park, Florida, and X-rayed them to count the number of eggs in each.
+
+Ashton, K.G., R.L. Burke, and J.N. Layne. 2007. Geographic variation in body and clutch size of gopher tortoises. Copeia 2007: 355-363.
+
+####Part A#### 
+
+In the R chunk below, plot the number of eggs versus the carapce length, construct a _simple_ regression model using the turtles' carapace length to predict their number of eggs, and plot the regression equation on the same graph. In the space below, comment on the use of this simple regression model (with evidence to support your comments).
+
+```{r}
+
+Turtles <- read_csv("Turtles.csv")
+
+simple <- lm(NumEggs ~ CarapaceLength, data = Turtles)
+
+plot(NumEggs ~ CarapaceLength, data = Turtles)
+abline(simple)
+
+qqnorm(simple$residuals)
+qqline(simple$residuals)
+hist(simple$residuals)
+plot(x = simple$fitted.values, y = simple$residuals)
+abline(a = 0, b= 0)
+summary(simple)
+
+
+```
+
+***
+
+Upon looking at the plot of our values with the regression line drawn on it, and our residuals versus our fitted values, our data does not appear to be linear. There is almost certainly a curve to our data. Transormations are needed, as simple linear regression is not valid in this case.
+
+
+
+***
+
+####Part B#### 
+
+In the R chunk below, plot the number of eggs versus the carapce length, construct a _polynomial_ regression model using the turtles' carapace length to predict their number of eggs, and plot the regression equation on the same graph. You should choose an ideal degree for the polynomial model. In the space below, comment on the use of this polynomial regression model (with evidence to support your comments).
+
+```{r}
+
+poly <- lm(NumEggs ~ I(CarapaceLength) + I(CarapaceLength ^2) , data = Turtles)
+
+plot(NumEggs ~ CarapaceLength, data = Turtles)
+
+
+B0 = poly$coefficients[1]
+B1 = poly$coefficients[2]
+B2 = poly$coefficients[3]
+
+curve(B0+ I(B1*x) + I(B2*x^2) ,add=TRUE, col="red")
+
+qqnorm(poly$residuals)
+qqline(poly$residuals)
+hist(poly$residuals)
+plot(x = poly$fitted.values, y = poly$residuals)
+abline(a = 0, b= 0)
+summary(poly)
+
+
+
+```
+
+***
+
+I tried many different polynomial models, and most of them gave me similar multiple r squares around .42. Our p value of .0149 shows that this model is almost certainly significant. All of our predictors including our intercept are significant (all below .01). Our residuals are centered around zero, and for the most part have constant variance. Our histogram of residuals show that they are normal, and our qqnorm plot shows that there is little relationship amongst the errors (satisfying independence amongst errors). Our p value for our model is 0.0149, so it is almost certainly significant. Therefore, we reject the null that this model is not significant.
+
+***
+
+####Part C#### 
+
+In the R chunk below, perform a test to examine the benefits of adding the new term(s) in your polynomial regression equation compared to your simple linear regression line. In the space below, comment on the results of your test.
+
+```{r}
+
+anova(simple, poly)
+
+```
+
+***
+Our null hypothesis is that the simple regression is just as good as the polynomial regression. Our alternative is that the polynomial is better. 
+Our nested F test gives us an F value of 11.102, and p value of 0.00455. This means that there is only a 0.00455 chance that this improvement in Residual Sum of Squares was due to random chance. Therefore, we reject the null that the simple regression is just as good as the polynomial regression, and accept the alternative that the polynomial is better.
+
+
+***
+

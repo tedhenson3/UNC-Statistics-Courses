@@ -1,0 +1,103 @@
+---
+title: "HW 6"
+author: "Ted Henson"
+date: "3/4/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+#Chapter 6, questions 2 and 4, pages 126-7. Omit question 2(e).
+
+# Question 2
+## a)
+```{r}
+library(faraway)
+data(melanoma)
+cross.table=xtabs(count~tumor+site, data = melanoma)
+cross.table
+
+mosaicplot(cross.table,color=T,main=NULL,las=1)
+
+```
+
+The type of cancer and location of the cancer do not appear to be independent. As an example, superficial tumors are much more likely to be found in the extremities.
+
+## b)
+```{r}
+summary(cross.table)
+
+```
+
+As shown by the chisq test statistic and corresponding p value, tumor and site are almost certainly not independent.
+
+## c)
+```{r}
+mod1 = glm(count ~ site + tumor, data = melanoma, family = 'poisson')
+summary(mod1)
+mod = glm(count ~ site*tumor, data = melanoma, family = 'poisson')
+sumary(mod)
+drop1(mod,test='Chi')
+```
+
+As shown by the original poisson model, full model with interactions and dropped chi sq test, the tumor and site are not independent as shown by the significance of the interaction terms.
+
+## d)
+```{r}
+round(xtabs(residuals(mod1,
+                      type = 'deviance')~tumor+site,melanoma), 3)
+round(xtabs(residuals(mod,
+                      type = 'deviance')~tumor+site,melanoma), 3)
+```
+
+The largest residuals were for freckle tumors located in the head site. Head tumors were very uncommon overall, with most of them occuring with freckles, so this is not too suprising given the model generating these residuals did not consider interaction terms. 
+
+## f)
+```{r}
+library(tidyverse)
+data.2 = melanoma %>% dplyr::filter(site != 'head')
+data.2$site  = factor(data.2$site,
+                         levels = c('extremity',
+                                    'trunk'))
+cross.table=xtabs(count~tumor+site, data = data.2)
+summary(cross.table)
+```
+
+As shown by the above chisq test statistic and corresponding p value, these factors are probably independent with the removal of the head observations.
+
+# Question 4
+## a)
+```{r}
+ct.v=xtabs(y~penalty + victim,death)
+ct.v
+ct.d=xtabs(y~penalty + defend,death)
+ct.d
+
+ct.c=xtabs(y~ defend + victim + penalty, data = death)
+ct.c
+summary(ct.c)
+```
+
+Yes this is an example of Simpson's paradox because when looking at the marginal frequencies, it appears that the defendant is much more likely to be charged with the death penalty when the victim is white as opposed to black. It also appears that black defendants are more likely to be charged with the death penalty than white defendants. The effect is more complex when considering all pairwise interactions. Black defendents are more likely to be charged with the death penalty when the victim is white. So the effect that black defendents are more likely to be charged still applies so this is not an example of Simpson's paradox. These differences are statistically significant according to the chisq statistic and corresponding p value.
+
+## b)
+
+The most appropriate model should be a poisson model
+```{r}
+mod = glm(y ~ penalty + victim*defend, death, family = poisson)
+summary(mod)
+```
+
+## c)
+
+```{r}
+death = death %>% group_by(victim, defend) %>% mutate(total = sum(y)) %>% group_by(victim, defend) %>% mutate(prop = y/total) %>% arrange(desc(penalty))
+
+
+binom = glm(prop ~ victim + defend + victim:defend, data = death,
+            family = binomial("logit"))
+summary(binom)
+```
+
+The above created a binomial model with the proportion of death penalties assigned as the response.

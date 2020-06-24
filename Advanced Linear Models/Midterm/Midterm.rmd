@@ -1,0 +1,297 @@
+---
+title: "Midterm"
+author: "Ted Henson"
+date: "2/27/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, eval = T, warning = F)
+```
+
+```{r}
+#setup
+setwd("~/Advanced Linear Models/Midterm")
+library(readr)
+library(tidyverse)
+
+drugs = read_csv("Drugs.csv")
+backache = read_csv("Backache.csv")
+```
+
+
+# Question 1
+# a)
+```{r}
+drugs$prop = drugs$Aftereffects / drugs$Patients
+plot(drugs$Dose, drugs$prop)
+```
+
+The plot above shows that the probability of having after-effects is generally higher at higher doses. The highest proportion of after-effects occurred at a dose of 3.3 and the lowest proportion occurred at a dose of 1.1. The shape of this moderately strong positive relationship is roughly linear, but there could be some non linear effects present.
+
+# b)
+```{r}
+mod = glm(prop ~ Dose, data = drugs, family = 'binomial')
+#Summary
+print('Summary of Model')
+summary(mod)
+```
+```{r}
+print("Parameter Estimates:")
+mod$coefficients
+
+```
+
+```{r}
+#Standard Errors of Paramaters
+print("Standard Errors of Parameters:")
+summary(mod)$coefficients[, 2]
+```
+
+```{r}
+print("Deviance of the Model:")
+deviance(mod)
+```
+
+# c)
+```{r}
+
+plot(mod)
+print('Chi square test for deviance:')
+pchisq(deviance(mod), df.residual(mod), lower = F)
+p.full = sum(residuals(mod, type = 'pearson')^2)
+print('Chi square test for Pearson Residuals:')
+pchisq(p.full, df.residual(mod), lower = F)
+
+confint(mod)
+
+```
+
+The model appears to fit the data reasonably well despite p values for the coefficients suggesting non significance. The residuals appear to be normally distributed around 0 based on the residuals versus fitted plot. Point 6 appears to be  a large residual, but it along with the other points do not appear to be influential based on the leverage versus residuals plot and cooks distance. The chi squared test using the deviance and the pearson residuals both had p values close to 1, indicating no lack of fit.
+
+# d)
+```{r}
+quad.mod = glm(prop ~ Dose + I(Dose^2), data = drugs, family = 'binomial')
+print('Chi square test for difference in deviance between base and quadratic model:')
+
+pchisq(deviance(mod) - deviance(quad.mod) , df.residual(mod) - df.residual(quad.mod), lower = F)
+
+p.full = sum(residuals(mod, type = 'pearson')^2)
+p.quad = sum(residuals(quad.mod, type = 'pearson')^2)
+
+print('Chi square test for difference in Pearson residuals between base and quadratic model:')
+
+pchisq(p.full - p.quad, df.residual(mod) - df.residual(quad.mod), lower = F)
+
+quasi.mod = glm(prop ~ Dose, data = drugs, family = 'quasibinomial')
+print('Chi square test for difference in deviance between base and quasi model:')
+
+pchisq(deviance(mod) - deviance(quasi.mod), df.residual(mod) - df.residual(quasi.mod), lower = F)
+p.full = sum(residuals(mod, type = 'pearson')^2)
+p.quasi = sum(residuals(quasi.mod, type = 'pearson')^2)
+print('Chi square test for difference in Pearson residuals between base and quasi model:')
+pchisq(p.full - p.quasi, df.residual(mod) - df.residual(quasi.mod), lower = F)
+
+print('Model Plots of Quasi Model')
+plot(quasi.mod)
+print('Model Plots of Quadratic Model')
+plot(quad.mod)
+print('Summary of Quasi Model:')
+summary(quasi.mod)
+print('Summary of Quadratic Model:')
+summary(quad.mod)
+```
+The standard model is better than the quadratic model. The quadratic term in the quadratic model had a p value close to 1 and it's deviance and pearson residuals were not reduced enough when compared to the standard model using a chisq test for significance to justify including it. Incorporating an over dispersion parameter does not reduce the deviance or pearson residuals enough to say reduction in deviance is statistically significant according to the chi square test. Plots of the quasibinomial model show there may be influential points according to the cooks distance. The original model had no points close to high influence; however, the standard errors of the coefficients of the quasibinomial model were much lower than both other models, and both the intercept and dose parameter had highly significant p values. This will result in narrower prediction intervals so the quasibinomial model will be used going forward. Treating the dose as a factor would not work in this case because there is only one observation per factored level. Therefore the quasi binomial model with just dose as a predictor is the best.
+
+# e)
+```{r}
+dat = data.frame(Dose = 2.6)
+pred = predict(quasi.mod, dat, se.fit = T, type = 'response')
+interval = c(pred$fit-qnorm(.025,lower.tail=FALSE)*pred$se.fit,
+             pred$fit+qnorm(.025,lower.tail=FALSE)*pred$se.fit)
+print('Predicted probability for after effects with a dose of 2.6:')
+pred$fit
+print('Confidence interval for probability of after effects with a dose of 2.6:')
+interval
+```
+
+# f)
+```{r}
+
+#.5/1-.5
+#0 = mod$coefficients[1] + mod$coefficients[2]*x
+val = as.numeric(-as.numeric(quasi.mod$coefficients[1]) / quasi.mod$coefficients[2])
+dat = data.frame(Dose = val)
+pred = predict(quasi.mod, dat, se.fit = T, type = 'response')
+val
+pred$fit
+interval = c(pred$fit-qnorm(.025,lower.tail=FALSE)*pred$se.fit,
+             pred$fit+qnorm(.025,lower.tail=FALSE)*pred$se.fit)
+interval
+
+```
+
+A dose of `r val` would yield a 50% probability of after effects based on the chosen model. A 95% confidence interval for this probability would be 
+`r interval`.
+
+
+# Question 2
+# a)
+```{r, echo = T}
+backache$y = ifelse(backache$Severity <= 1, 0, 1)
+backache$Weightend = backache$Weightend - backache$Weightstart
+colnames(backache)[which(colnames(backache) == 'Weightend')] = 'Weightgain'
+head(backache$y)
+head(backache$Weightgain)
+```
+
+# b)
+```{r}
+backache= backache %>% dplyr::select(-Patient)
+#plot(y ~ ., data = backache)
+
+summary(backache)
+```
+
+The patient variable should be eliminated from analysis since it is the unique identifier. There are also a few patients ages 15-17 so that could potentially be an error in the data set. There are also no observations with months November or December so that could also be an error. Summary tables and plots of the continuous variables showed no obvious errors. There are a few binary variables with only a few values of 1 so that could be erroneous or a problem in the analysis. Significance from these variables should be made cautiously.
+
+# c)
+```{r}
+library(ggplot2)
+ggplot(backache,aes(x=Age,y=y, colour =y))+geom_jitter()
+ggplot(backache,aes(x=Weightgain,y=y, colour =y))+geom_jitter()
+ggplot(backache,aes(x=PrevKids,y=y, colour =y))+geom_jitter()
+
+```
+
+The age does not show a clear positive or negative relationship to the response, but most older women did not have severe back aches. A high weight gain may increase the risk of the response based on the plot, but statistical tests would need to confirm this. The more previous kids the mother had also may increase the risk of back aches.
+
+
+# d)
+```{r}
+mod = glm(y ~ Age + Height + Weightstart + Weightgain + Weightbaby + PrevKids + PrevBackache, data = backache, family = 'binomial')
+summary(mod)
+step(mod, trace = 0)
+confint(mod)
+reduced.mod = glm(y ~ Height  + Weightgain + Weightstart+ PrevBackache, data = backache, family = 'binomial')
+summary(reduced.mod)
+```
+
+The significant variables in predicting backaches appear to be the mother's height, weight at the start of the pregnancy, weight gain during pregnancy, and the number of previous backaches. These variables had small p values and had confidence intervals not including 0. All other variables had non significant p values and had 95% confidence intervals containing. 
+
+# e)
+```{r}
+#plot(mod)
+library(generalhoslem) # may have to install first
+logitgof(backache$y, reduced.mod$fitted.values, g = 2)
+plot(residuals(reduced.mod)~reduced.mod$fitted.values,xlab='Linear Predictor',ylab='Deviance Residuals')
+qqnorm(reduced.mod$residuals)
+qqline(reduced.mod$residuals)
+library(faraway)
+halfnorm(hatvalues(reduced.mod))
+linpred = predict(reduced.mod, type = 'response')
+backache=mutate(backache,predprob=predict(reduced.mod,type='response'))
+gdf=group_by(backache,cut(linpred,breaks=unique(quantile(linpred,
+                                                         na.rm = 
+                                                           T))))
+gdf = na.omit(gdf)
+hldf=summarise(gdf,y=sum(y),ppred=mean(predprob),count=n())
+
+
+hldf=mutate(hldf,se.fit=sqrt(ppred*(1-ppred)/count))
+ggplot(hldf,aes(x=ppred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit))+geom_point()+
+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1)+xlab('Predicted Probability')+
+ylab("Observed Proportion")
+```
+
+The Hosmer-Lemeshow test of the reduced model shows that this model is a good fit of the data with a p value close to zero. There are no points with extremely large residuals or leverage. The plot of the observed proportion by the expected proportion confirms that the observed proportions are well within the standard errors of the fitted model.
+
+# f)
+```{r}
+mod = glm(y ~ Tablets + HotBottle + HotBath + Cushion + Standing + Sitting + Lyingdown + Walking, data = backache,
+          family = 'binomial')
+summary(mod)
+confint(mod)
+drop1(mod, test = 'F')
+```
+
+Based on the p values using the dropped F test, the variables Tablets, HotBath, Cushion, Sitting, and Lyingdown are all significant under the .05 threshold at least. They also had 95% confidence intervals for the parameter estimates not containing 0. Hotbottle was almost significant. Standing and Walking had fairly high p values.
+
+# g)
+```{r}
+predictors = backache[,which(colnames(backache) == 'Fatigue'):
+                        which(colnames(backache) == 'Walking2')]
+
+dat = cbind(backache$y, predictors)
+colnames(dat)[1] = 'y'
+mod = glm(y ~ ., 
+          data = dat,
+          family = 'binomial')
+summary(mod)
+confint(mod)
+drop1(mod, test = 'F')
+```
+
+The dropped F test showed that Coughing, Standing2, and Lifting were all significant below the .05 threshold. Standing2 and Lifting had significant p values from the t distribution (summary output) whereas coughing was close to 1 and had a very high standard error. There were only 4 responses as 1 for coughing so that explains the high standard error. Standing2 and lifting are most likely significant, but Coughing has too few responses as 1 to conclude whether it is significant in conjunction with the high p value and standard error.
+
+# h)
+There are many factors that might be associated with whether or not a pregnant woman will experience severe or non severe back aches. These factors may or may not cause back aches, they could simply be related. A patients individual traits such as a history of backaches, their weight at the start of the pregnancy, and weight gain during pregnancy could increase the chance of back aches with pregnancy. A shorter women has much less of a chance of having back aches. Additionally, if the patient lifts objects or stands frequently the chances of back aches increases. Statistical tests showed that perceiving activities as pain relieving such as a hot bath, lying down, sitting, or using tablets would increase the likelihood of having back aches, but this is evidence of confounding: if a women perceives that resting alleviates back pain then she most likely has back pain. 
+
+# Question 3
+# a)
+```{r}
+library(faraway)
+data(rats)
+plot(time ~ ., data = rats)
+```
+
+Survival time appears to be longer for poison I then poison II. Poison III appears to clearly yield the shortest survival time. Treatments B and D appear to yield similar survival times, and they both yield longer times than A and C. A and C are about the same, with A yielding slightly shorter survival times.
+
+# b)
+```{r}
+mod = lm(time ~  poison + treat + I(poison:treat), data = rats)
+summary(mod)
+library(MASS)
+bc=boxcox(mod)
+bc$x[which.max(bc$y)]
+shapiro.test(1/rats$time)
+```
+
+A box cox transformation would yield an optimal lambda value of -.83. This could be rounded to -1 to yield a more interpretable response: 1/time. A Shapiro Wilks test for normality yielded a p value of about .09 after transforming the response, so the distribution of the transformed response follows a normal distribution reasonably well.
+
+# c)
+```{r}
+mod = lm(1/time ~ poison+ treat + I(poison:treat), data = rats)
+summary(mod)
+plot(mod)
+```
+
+The model appears to fit the data ok. There are do not appear to be any huge outliers in the residuals, but they do appear to be larger for Poison level II compared to I and III. There do not appear to be any points of influence as the values have constant leverage.
+
+# d)
+```{r}
+anova(mod)
+mod = lm(1/time ~ poison+ treat, data = rats)
+summary(mod)
+
+
+```
+
+Based on the anova test and corresponding p value, and the p values from the t distribution and standard errors from the model, the interaction term does not appear to be significant. After creating the model with no interaction term, the shortest survival time would result from having poison III and treatment A.
+
+# e)
+```{r}
+mod.inv = glm(1/time ~ poison + treat, data = rats, 
+          family = inverse.gaussian(link = "identity")
+          )
+summary(mod.inv)
+```
+
+Creating an inverse gaussian model with an identity link, the shortest survival time would result from having poison III and treatment A agreeing with previous model.
+
+# f)
+```{r}
+plot(1/mod$fitted.values,1/mod.inv$fitted.values)
+```
+
+Yes the models produce a very similar fit. They disagree slightly on a couple of points, but on the whole, they produce similar fits.

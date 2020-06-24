@@ -1,0 +1,89 @@
+---
+title: "HW 2"
+author: "Ted Henson"
+date: "1/27/2020"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, eval = T, warning = F)
+```
+
+# Question 2
+```{r}
+library(faraway)
+pairs(perm ~ ., data = rock)
+library(psych)
+multi.hist(x = rock)
+```
+
+```{r}
+full.mod = lm(perm ~ ., data = rock)
+summary(full.mod)
+confint(full.mod)
+```
+
+# Stepwise AIC Model
+```{r}
+none = lm(perm ~ 1, data = rock)
+library(MASS)
+step.mod = stepAIC(none, scope = list(upper = full.mod),  direction = 'both')
+summary(step.mod)
+```
+
+```{r}
+reduced.mod = lm(perm ~ peri + area, data = rock)
+```
+
+# Model Diagnostics
+```{r}
+hist(full.mod$residuals)
+hist(reduced.mod$residuals)
+qqnorm(full.mod$residuals)
+qqline(full.mod$residuals)
+qqnorm(reduced.mod$residuals)
+qqline(reduced.mod$residuals)
+plot(full.mod$fitted.values, rock$perm)
+plot(reduced.mod$fitted.values, rock$perm)
+
+```
+
+# Question 2 Report
+  For the rock dataset, scatter plots of the predictor variables versus the response were constructed, as were histograms. The peri variable appeared to be bimodal and the response appeared to be skewed. The area and peri variables had highly significant p values and confidence intervals not including zero. The shape variable had a p value of about 8% and a wide confidence interval. The scatter plot was rather odd, but there still could be a relationship between shape and the response, perm. Stepwise regression did not eliminate this variable so a reduced model was built without the shape variable, and its residuals were compared to the full model. They were fairly similar, as were the plots of fitted versus actual values. It is difficult to say which model would perform better in practice, but one should probably go with the reduced model since it performed similarly with fewer variables.
+  
+# Question 5
+```{r}
+pairs(lpsa ~ ., data = prostate)
+library(psych)
+multi.hist(x = prostate)
+```
+
+```{r}
+full.mod = lm(lpsa ~ ., data  = prostate)
+summary(full.mod)
+confint(full.mod)
+```
+
+# Stepwise AIC Model
+```{r}
+library(leaps)
+none = lm(lpsa ~ ., data  = prostate)
+library(MASS)
+step.mod = stepAIC(none, scope = list(upper = full.mod),  direction = 'both')
+summary(step.mod)
+```
+
+# Model Diagnostics
+```{r}
+hist(full.mod$residuals)
+hist(step.mod$residuals)
+qqnorm(full.mod$residuals)
+qqline(full.mod$residuals)
+qqnorm(step.mod$residuals)
+qqline(step.mod$residuals)
+plot(full.mod$fitted.values, prostate$lpsa)
+plot(step.mod$fitted.values, prostate$lpsa)
+```
+
+# Question 5 Report
+  For the prostate dataset, a similar process was constructed: scatter plots of the predictor variables and the response, along with histograms. In this case, the stepwise regression did eliminate some variables, mostly those with higher p values. In terms of the residuals and plots of fitted versus actual values, they were almost identical, so the reduced model should be chosen as it performed similarly with less predictor variables.
+  

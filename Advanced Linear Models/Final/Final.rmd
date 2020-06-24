@@ -1,0 +1,253 @@
+---
+title: "Final STOR 590"
+author: "Ted Henson"
+date: "4/28/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, eval = T, warning = F, message = F)
+```
+I will neither give nor receive unauthorized aid on this exam
+Ted Henson
+```{r}
+#setup
+setwd("~/Advanced Linear Models/Final")
+library(readr)
+library(tidyverse)
+library(lme4)
+library(geepack)
+library(faraway)
+library(pbkrtest)
+library(INLA)
+library(RLRsim)
+```
+
+# Question 1
+## a)
+```{r}
+soap = read_csv('soappads.csv')
+head(soap)
+library(ggplot2)
+soap.summary = soap %>% group_by(Treat) %>% 
+  summarise(mean.score = mean(Score)) %>% 
+  dplyr::arrange(desc(mean.score))
+soap.summary
+```
+Treatment dcs had the highest mean score by the judges.
+
+## b)
+This method would not work as there would be too many factor variables and not enough observations. There would be one observation per nested factored level so the regression would break as the number of features would exceed the number of observations.
+
+## c)
+```{r}
+mod = aov(Score ~ factor(Judge) + factor(Treat), data = soap)
+summary(mod)
+mod$coefficients[order(mod$coefficients)]
+```
+
+Treatment cs shapes up the best in terms of minimizing the mean score compared to other treatments. This gives a different result than a) because of the effects posed by the judges. 
+
+## d)
+```{r}
+mmod=lmer(Score~Treat+(1|Judge),soap)
+summary(mmod)
+
+```
+
+In treating the judge as a random effect, treatment cs again would expect to yield the lowest score compared to other treatments. This would not be the case if two treatments were subject to different judges.
+
+## e)
+```{r}
+soap$success = ifelse(soap$Score <= 2, 1, 0)
+logit = glm(success ~ factor(Treat) + factor(Judge),
+            data = soap,
+            family = 'binomial')
+summary(logit)
+logit$coefficients[order(logit$coefficients, decreasing = T)]
+
+```
+
+Treatment s would yield the largest probability of a successful result. The problem with this model is that there are too many factored variables and not enough observations, resulting in large standard errors and p values so it is difficult to conclude which treatment is best from this model.
+
+## f)
+```{r}
+nmod=lmer(Score~1+(1|Judge),soap)
+
+KRmodcomp(mmod,nmod)
+mmod=lmer(Score~Treat+(1|Judge),soap,REML = F)
+nmod=lmer(Score~1+(1|Judge),soap, REML = F)
+
+pmod=PBmodcomp(mmod,nmod)
+summary(pmod)
+```
+
+The Kenward-Rodger test and parametric bootstrap test both do not show statistical significance for the effects of the treatments. Treatment cs may be the treatment yielding the lowest score, but there is not statistical evidence to conclude that considering the large standard error in the mixed effects model and the lack of statistical evidence for effects of the treatments.
+
+# Question 2
+## a)
+```{r}
+spruce = read_csv('spruce.csv')
+head(spruce)
+ggplot(spruce, aes(x=day, y = y, colour= id)) + geom_point() +
+  geom_line() + 
+  facet_grid(tx ~ .) 
+```
+
+The size of the tree does appear to be larger for the lower ozone environment as well as the growth rate. The growth rate of the high ozone environment gradually levels off and almost becomes flat. The total size of most trees is less at each day for the higher ozone trees compared to the lower ozone trees.
+
+## b)
+```{r}
+lm.mod = lm(y ~ day+factor(chamber), data = spruce)
+summary(lm.mod)
+
+lm.mod = lm(y ~ day+factor(tx), data = spruce)
+
+summary(lm.mod)
+qqnorm(lm.mod$residuals)
+qqline(lm.mod$residuals)
+plot(lm.mod$fitted.values, residuals(lm.mod))
+abline(b=0, a = 0)
+library(MASS)
+boxcox(lm.mod)
+shapiro.test(spruce$y)
+shapiro.test(1/spruce$y)
+```
+
+Since there were only low ozone observations for chamber 3 and 4, only separate models could be built to compare the effects of tx and the chamber. Based on the p values it appears that the tx and day is significant, but the chambers are not so the model with days and tx will be used for analysis. The residuals looked skewed at the higher and lower ends of the response variable. A box cox transformation would yield a lambda of about 1.5. The Shapiro test for normality of the transformed response yielded a p value closer to zero than the standard response.
+
+## c)
+```{r}
+mmod=lmer(y~day+factor(tx)+(1|chamber)+(1|id)+(1|chamber:id),spruce)
+summary(mmod)
+```
+
+The fixed effect term of the intercept would be 4.9671966 with a standard error of 0.1228498, the days term would be 0.0126824 with a standard error of 0.0002655 and the fixed effects of tx would be -0.2115001 with a standard error of 0.1485899. Theses coefficients are more or less the same compared to the previous model, although there are higher standard errors for the intercept and tx in this model.
+
+## d)
+```{r}
+cmod = lmer(y~day+factor(tx) + (1|chamber) + (1|id), spruce)
+nmod=lmer(y~day+factor(tx) + (1|id),spruce)
+nmod2=lmer(y~day+factor(tx) + (1|chamber),spruce)
+
+pmod=PBmodcomp(mmod,nmod)
+summary(pmod)
+exactRLRT(nmod, cmod, nmod2)
+
+pmod=PBmodcomp(mmod,nmod2)
+summary(pmod)
+exactRLRT(nmod2, cmod, nmod)
+
+```
+
+The RLRT test show that the random effect posed by the id of the tree is not significant, but the parametric boostrap does. For the chamber, the RLRT shows it is significant, but the parametric boot strap test does not.
+
+## e)
+```{r}
+mmod=lmer(y~day+factor(tx) + (1|id),spruce)
+
+nmod=lmer(y~day + (1|id),spruce)
+
+KRmodcomp(mmod,nmod)
+
+```
+
+The Kenward-Rodgers test does not show statistical significance for the effect of the tx variable, but it was fairly close so it should not be thrown out of discussion completely.
+
+## f)
+One disadvantage to a random effects model is that it decreases interpretability, particularly for non statistician oriented audiences; however, without doing the random effects analysis one may conclude for certain that the tx variable is significant and causes differences in the growth of a tree. As shown by the Kenward-Rodgers test, we do not currently have statistical evidence to conclude this. So a random effects model can disprove relationships one may think are significant based on a fixed effects model, uncover significant effects a fixed effects model may not find, but at the cost of interpretability.
+
+
+# Question 3
+## a)
+```{r}
+schiz = read_csv('schiz.csv')
+schiz = schiz %>% group_by(MONTH) %>% mutate(n = n(),
+                                             prop.sym = sum(Y)/n())
+ggplot(schiz, aes(x = MONTH, y = prop.sym)) + geom_point()
+```
+The proportion of patients exhibiting symptoms decreases over the months in a linear fashion, but begins to level off by month 8.
+
+## b)
+```{r}
+plot(prop.sym~MONTH,pch=20,ylab='Prop of Symptoms',xlab='Months',schiz)
+
+par(mfrow=c(1,1),cex=1.1)
+library(sm)
+with(schiz,sm.regression(MONTH,prop.sym,h=h.select(MONTH,prop.sym)))
+schiz1=schiz[order(schiz$MONTH),]
+plot(prop.sym~MONTH,pch=20,ylab='Prop of Symptoms',xlab='Months',schiz1)
+
+library(splines)
+erupspl=ns(schiz1$MONTH,3)
+lines(lm(prop.sym[order(MONTH)]~erupspl[order(MONTH),])$fitted~sort(MONTH),
+      schiz1,lw=3,col='blue')
+
+plot(prop.sym~MONTH,pch=20,ylab='Prop of Symptoms',xlab='Months',schiz1)
+
+erupspl=ns(schiz1$MONTH,6)
+lines(lm(prop.sym[order(MONTH)]~erupspl[order(MONTH),])$fitted~sort(MONTH),
+      schiz1,lw=3,col='red')
+```
+
+6 degrees of freedom makes the regression spline curve approximately the same as the fitted smoothed curve, but other larger numbers do fairly well as well.
+
+## c)
+```{r}
+mod = glm(prop.sym ~ factor(AGE)+factor(GENDER)+factor(MONTH), 
+          data = schiz,
+          family = 'binomial')
+summary(mod)
+mod = glm(prop.sym ~ factor(AGE)+factor(GENDER)+factor(MONTH), 
+          data = schiz,
+          family = 'quasibinomial')
+summary(mod)
+```
+
+Age and Gender do not appear to have an effect on the probability of developing symptoms. The quasi binomial model reached the same conclusion to an even greater degree. All month variables appear to be significant in the quasi binomial model. All month variables aside from months 1 and 2 are significant in the standard logistic regression model.
+
+
+## d)
+```{r}
+modgh=glmer(Y~factor(MONTH)+factor(AGE)+factor(GENDER) + (1|ID),
+            nAGQ=25,
+            family=binomial,schiz)
+summary(modgh)
+```
+
+Same As with the previous model, almost all of the months are significant in this model. Unlike the previous model, this model found that the gender was significant, but that the age was not. 
+
+## e)
+```{r}
+modgeep=geeglm(prop.sym~factor(AGE)+factor(GENDER)+factor(MONTH),id=ID,
+                corstr='ar1',scale.fix=T,
+               data=schiz,family=binomial)
+
+summary(modgeep)
+
+```
+
+The GEE model also concludes that the age and gender are not significant and that all of the month variables are significant.
+
+## f)
+```{r}
+formula=Y~factor(AGE)+factor(GENDER)+factor(MONTH)+f(ID,model='iid')
+result=inla(formula,family='binomial',data=schiz)
+
+
+### some exploration of what "result" really contains (not in the next)
+
+
+# some of these variables are self-contained arrays or tables, for example
+
+result$summary.fixed
+
+result$summary.hyperpar
+
+```
+
+The INLA model found that the gender was significant: negative across all quantiles. It also agreed with other models that the age was not significant, but that most of the month variables were significant.
+
+## g)
+
+Most of the conclusions were similar across all models: most or all of the month variables are highly significant while age was not. The INLA model and the Gauss-Hermite model found that the gender was significant. Although it is only one variable, these two models found it highly significant. Considering the impacts that this conclusion could have on treatments, it is a significant result and highlights the importance of using multiple methods.

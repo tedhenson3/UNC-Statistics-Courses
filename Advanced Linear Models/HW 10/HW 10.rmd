@@ -1,0 +1,198 @@
+---
+title: "HW 10"
+author: "Ted Henson"
+date: "4/17/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 13, questions 1 and 3 (pp. 294-295), but omitting 1(h).
+
+# Question 1
+## a)
+```{r}
+library(faraway)
+data(ohio)
+length(unique(ohio$id))
+nrow(unique(ohio[, c('id', 'smoke')]))
+```
+
+No, all mothers had the same smoking status throughout because all of the children's mothers had the same status for each child.
+
+## b)
+```{r}
+library(ggplot2)
+library(tidyverse)
+
+ohio = ohio %>% group_by(id) %>% mutate(years = sum(resp))
+sum.table = ohio %>% group_by(smoke,
+                              years) %>% summarise(num.wheeze = n())
+sum.table = sum.table %>% group_by(smoke) %>% mutate(prop.wheeze = num.wheeze / sum(num.wheeze))
+sum.table
+```
+
+## c)
+```{r}
+ohio = left_join(ohio, sum.table)
+smokers = ohio %>% dplyr::filter(smoke == 1)
+non.smokers = ohio %>% dplyr::filter(smoke == 0)
+
+ggplot(ohio, aes(prop.wheeze, years,
+                 col = smoke)) + geom_point()
+
+```
+
+## d)
+```{r}
+ohio  = ohio %>% group_by(id) %>% mutate(total = sum(resp) / 4)
+ohio = unique(ohio)
+mod = glm(total ~ smoke, data = ohio, family = 'quasibinomial')
+summary(mod)
+```
+
+This does not prove that there is a smoking effect because it could be due to random chance. The graph plotting years by smoking did not show any obvious difference.
+
+## e)
+```{r}
+library(MASS)
+modpq=glmmPQL(resp~age + smoke,random=~1|id,
+               family=binomial, data=ohio)
+summary(modpq)
+
+```
+
+Age has a significant effect whereas we do not have significant evidence by the p value to conclude that smoking has an effect.
+
+## f)
+```{r}
+library(lme4)
+modgh=glmer(resp~age + smoke + (1|id),
+            nAGQ=25,family=binomial,ohio)
+summary(modgh)
+
+
+```
+
+The fit and the p values were almost identical.
+
+
+## g)
+```{r}
+library(INLA)
+
+formula=resp~smoke +age +f(id,model='iid')
+result=inla(formula,family='binomial',data=ohio)
+
+# some of these variables are self-contained arrays or tables, for example
+
+result$summary.fixed
+
+result$summary.hyperpar
+
+# others are complocated objects in their own right, for example
+
+names(result$marginals.fixed)
+```
+
+The model shows that across the distribution age is negatively associated with resp and smoke has a high degree of variability so we cannot conclude that it is related to resp.
+
+## i)
+```{r}
+library(geepack)
+modgeep=geeglm(resp~ age + smoke,id=id,
+               corstr='ar1',scale.fix=T,data=ohio,family=binomial)
+
+summary(modgeep)
+
+```
+
+The model agrees with the previous models that smoking is not significant, but age is. The alpha of .5 with a small standard error shows that there is a high liklihood of autocorrelation within children: a child who already wheezes is likely to continue to wheeze.
+
+
+# Question 3
+## a)
+```{r}
+data(wavesolder)
+head(wavesolder)
+plot(y1+y2+y3 ~ ., data = wavesolder)
+```
+## b)
+```{r}
+mod1 = glm(y1 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family = 'poisson')
+summary(mod1)
+
+mod2 = glm(y2 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family 
+           = 'poisson')
+summary(mod2)
+mod3 = glm(y3 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family = 'poisson')
+summary(mod3)
+mod1 = glm(y1 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family = 'quasipoisson')
+summary(mod1)
+
+mod2 = glm(y2 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family 
+           = 'quasipoisson')
+summary(mod2)
+mod3 = glm(y3 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family = 'quasipoisson')
+summary(mod3)
+```
+The first model is inadequate because of overdispersion. The second model includes an overdispersion paramater which eliminates the significance of many of the variables the intial model thought were significant.
+## c)
+```{r}
+
+mod = glm(y1+y2+y3 ~ prebake + flux + speed + preheat + cooling + agitator + temp, data = wavesolder,
+           family = 'quasipoisson')
+summary(mod)
+
+```
+
+This model produced significant variables similar to the quasi poisson models for the individual runs.
+
+## d)
+```{r}
+wavesolder$id = c(1:16)
+wavesolder$sum = sum(wavesolder$y1,
+                     wavesolder$y2,
+                     wavesolder$y3)
+wavesolder = gather(wavesolder,
+           key = day,
+           val = count,
+           y1:y3)
+wavesolder = wavesolder %>% arrange(id)
+
+modgeep1=geeglm(count ~ prebake + flux + speed + preheat + cooling + agitator + temp,id = id,
+               corstr='ar1',scale.fix=T,data=wavesolder,family=poisson)
+
+summary(modgeep1)
+```
+
+With a fixed scale there is still no evidence that there is correlation between succesive duplicates.
+
+
+## e)
+```{r}
+modgeep1=geeglm(count ~ prebake + flux + speed + preheat + cooling + agitator + temp,id = id,
+               corstr='ar1',data=wavesolder,family=poisson)
+
+summary(modgeep1)
+```
+
+Even without a fixed scale there is still no evidence that there is correlation between succesive duplicates.
+
+## f)
+```{r}
+modgeep1=geeglm(count ~ prebake + flux + speed + preheat + cooling + agitator + temp,id = id,
+               corstr='unstructed',data=wavesolder,family=poisson)
+
+summary(modgeep1)
+```
+
+This model found a couple more significant variables than the poisson model did, and it produced lower p values for the significant variables.

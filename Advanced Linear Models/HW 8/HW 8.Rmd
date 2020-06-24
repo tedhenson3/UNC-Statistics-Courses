@@ -1,0 +1,146 @@
+---
+title: "HW 8"
+author: "Ted Henson"
+date: "4/3/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
+# Question 5
+## a)
+```{r}
+library(faraway)
+data("broccoli")
+head(broccoli)
+library(pbkrtest)
+library(ggplot2)
+library(lme4)
+
+ggplot(broccoli, aes(x=grower, y = wt)) + geom_boxplot()
+ggplot(broccoli, aes(x=cluster, y = wt)) + geom_boxplot()
+ggplot(broccoli, aes(x=box, y = wt)) + geom_boxplot()
+ggplot(broccoli, aes(x=cluster, y = wt)) + geom_boxplot() + facet_grid(box ~ .)
+ggplot(broccoli, aes(x=cluster, y = wt)) + geom_point() + facet_grid(grower ~ .)
+
+ggplot(broccoli, aes(x=box, y = wt)) + geom_point() + facet_grid(grower ~ .)
+
+ggplot(broccoli, aes(x=cluster, y = wt)) + geom_point() + facet_grid( box ~ grower)
+```
+
+Plots of the data do not show any obivious trends regarding the mean weight whether from viewing each variable separately, all  together, or in pairs, but there may be some random variation within groups, specifically within clusters.
+
+
+## b)
+```{r}
+library(tidyverse)
+
+box.means = broccoli %>% group_by(box) %>% summarise(weight = mean(wt))
+box.means
+grower.means = broccoli %>% group_by(grower) %>% summarise(weight = mean(wt))
+grower.means
+
+cluster.means = broccoli %>% group_by(cluster) %>% summarise(weight = mean(wt))
+cluster.means
+```
+
+## c)
+```{r}
+fmod=lmer(wt~ box*grower + (1|cluster),broccoli)
+summary(fmod)
+fixef(fmod)
+
+```
+
+The model assigned no random effects to the clusters with a low variance and standard deviation between clusters, but a high variance and standard deviation within clusters. It assigned fixed effects to the boxes and growers, but they had fairly high standard errors.
+
+## d)
+```{r}
+mmod=lmer(wt~ grower + (1|cluster),broccoli)
+nmod=lmer(wt~ 1 + (1|cluster),broccoli)
+KRmodcomp(mmod,nmod)
+
+```
+
+The Kenward Rodgers test shows that no variation can be attributed to the growers.
+
+
+## e)
+```{r}
+mmod=lmer(wt~ box + (1|cluster),broccoli)
+nmod=lmer(wt~ 1 + (1|cluster),broccoli)
+KRmodcomp(mmod,nmod)
+```
+
+The test also confirms no variation can be attributed to the boxes.
+
+## f)
+```{r}
+confint(fmod)
+
+```
+
+
+# Question 7
+
+## a)
+```{r}
+data(semicond)
+head(semicond)
+
+ggplot(semicond, aes(x=ET, y = resistance)) + geom_boxplot()
+ggplot(semicond, aes(x=Wafer, y = resistance)) + geom_boxplot()
+ggplot(semicond, aes(x=position, y = resistance)) + geom_boxplot()
+ggplot(semicond, aes(x=Grp, y = resistance)) + geom_boxplot()
+
+```
+
+The Grp variable appears to be the most significant in terms of the expected resistance. There may be differences with variation within the ET and other variables.
+
+## b)
+```{r}
+mod = lm(resistance ~ position*ET, data = semicond)
+summary(mod)
+```
+
+According to this model no terms are significant aside from the intercept, although ET4 was close. The problem with this model is it does not include a term accounting for the random variability within the GRP blocks.
+
+## c)
+```{r}
+mmod=lmer(resistance~ ET*position+ (1|Grp),semicond)
+summary(mmod)
+
+```
+
+The variation between Grp groups is .1 with an SD of .32 and the variation within a group is .1 with a variation of .33.
+
+## d)
+```{r}
+
+nmod=lmer(resistance~ ET+ (1|Grp),semicond)
+KRmodcomp(mmod,nmod)
+
+```
+
+The Kenward Rodgers test shows that there is not statistical evidence for the effect of the position variable.
+
+
+## e)
+```{r}
+fixef(mmod)
+```
+
+ET4 Results in the higest resistence, but we cannot be sure due to the interaction terms, but mainly because of the random effects by the Grp variable. That random variability must be considered when deciding the ET yielding highest resistence.
+
+## f)
+```{r}
+plot(predict(mmod), residuals(mmod))
+abline(a = 0, b=0)
+qqnorm(residuals(mmod))
+qqline(residuals(mmod))
+```
+
+The residuals appear to be fairly normal and centered around zero.

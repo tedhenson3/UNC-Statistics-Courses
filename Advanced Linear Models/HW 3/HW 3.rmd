@@ -1,0 +1,195 @@
+---
+title: "HW 3"
+author: "Ted Henson"
+date: "1/31/2020"
+output:
+  pdf_document: default
+  word_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, eval = T)
+```
+# Question 3
+# a)
+```{r}
+d = c('Plots of Kyphosis versus predictor variables')
+d
+library(faraway, warn = F, quietly=T)
+library(ggplot2)
+```
+
+```{r}
+data(kyphosis, package = 'rpart')
+kyphosis$Kyphosis = ifelse(kyphosis$Kyphosis == 'present', 1, 0)
+
+
+#ggplot(kyphosis,aes(x=Age,color=Kyphosis,fill=Kyphosis))+geom_histogram(position='dodge',binwidth=1)
+ggplot(kyphosis,aes(x=Age,y=Kyphosis, colour =Kyphosis ))+geom_jitter()
+
+#ggplot(kyphosis,aes(x=Number,color=Kyphosis,fill=Kyphosis))+geom_histogram(position='dodge',binwidth=1)
+ggplot(kyphosis,aes(x=Number,y=Kyphosis, colour =Kyphosis ))+geom_jitter()
+
+
+#ggplot(kyphosis,aes(x=Start,color=Kyphosis,fill=Kyphosis))+geom_histogram(position='dodge',binwidth=1)
+ggplot(kyphosis,aes(x=Start,y=Kyphosis, colour =Kyphosis ))+geom_jitter()
+
+#plot(jitter(as.numeric(kyphosis$Kyphosis))~jitter(kyphosis$Age),kyphosis,xlab='Age',ylab='Kyphosis',pch='.')
+
+
+```
+
+The presence of Kyphosis appears to be rare for higher values of the Start and Number variables.. It seems to be most common for middle values of the Age variable.
+
+# b)
+```{r}
+logit = glm(Kyphosis ~ ., data = kyphosis, family = 'binomial')
+linpred = predict(logit, kyphosis, type = 'response')
+plot(residuals(logit)~linpred,xlab='Linear Predictor',ylab='Deviance Residuals')
+
+```
+There are only a few cases where Kyphosis is predicted with a probability over 50%. Most of the larger deviance residuals are on the lower end of the predicted response, although there was one outlier in the far upper quantile.
+
+# c) 
+```{r}
+
+library(dplyr)
+kyphosis=mutate(kyphosis,residuals=residuals(logit),linpred=linpred)
+dat=group_by(kyphosis,cut(linpred,breaks=unique(quantile(linpred))))
+diagdf=summarise(dat,residuals=mean(residuals),linpred=mean(linpred))
+plot(residuals~linpred,diagdf,xlab='Linear Predictor',pch=20)
+
+
+```
+
+The mean of the residuals seem to be largest for in the lower quantiles of the predicted response values.
+ 
+#d
+```{r}
+kyphosis=mutate(kyphosis,residuals=residuals(logit),linpred=linpred)
+dat=kyphosis %>% mutate(Start = cut_number(as.numeric(Start), 4, ordered_result = T))
+
+diagdf=dat %>% dplyr::group_by(Start) %>% dplyr::summarise(residuals=mean(residuals))
+ggplot(diagdf,aes(x=Start,y=residuals))+geom_point() + ylim(min(diagdf$residuals),
+                                                            max(diagdf$residuals))
+
+
+
+```
+
+The mean of the residuals are larger at larger values of Start variable.
+
+#e
+```{r}
+
+qqnorm(logit$residuals)
+qqline(logit$residuals)
+
+```
+
+The residuals are much larger in the upper quantiles of the response variable.
+
+# f)
+```{r}
+plot(logit)
+
+```
+
+As the fourth plot shows, there are no points that are influential as they are within the dashed cooked lines, although point 43 is very close.
+
+# g)
+```{r}
+linpred = predict(logit)
+kyphosis=na.omit(kyphosis)
+kyphosis=mutate(kyphosis,predprob=predict(logit,type='response'))
+gdf=group_by(kyphosis,cut(linpred,breaks=unique(quantile(linpred))))
+hldf=summarise(gdf,y=sum(Kyphosis),ppred=mean(predprob),count=n())
+
+
+hldf=mutate(hldf,se.fit=sqrt(ppred*(1-ppred)/count))
+ggplot(hldf,aes(x=ppred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit))+geom_point()+
+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1)+xlab('Predicted Probability')+
+ylab("Observed Proportion")
+
+
+library(generalhoslem) # may have to install first
+logitgof(kyphosis$Kyphosis, kyphosis$predprob, g = 2)
+
+```
+
+The p value for the hosmer-lemeshow test was about .05 using 3 quantile groups and basically zero using two quantile groups. Therefore, the model predicting the two groups has statistical significance of a good fit.
+
+# h)
+```{r}
+kyphosis=mutate(kyphosis,predout=ifelse(predprob<0.5,"no","yes"))
+xtabs(~Kyphosis+predout,kyphosis)
+```
+
+When Kyphosis is present, the model would predict it is present with probability `r 7/17`. This would be the true positive rate.
+
+
+# Question 4
+
+# a)
+```{r}
+#Chapter 2 from the text, Questions 3 and 4 (pages 47-49)
+data(nodal, package = 'boot')
+nodal$m = NULL
+nodal = nodal[order(nodal$r, decreasing  = T),]
+image(as.matrix(nodal))
+```
+
+# b)
+```{r}
+logit = glm(r ~., 
+            data = nodal,  family = 'binomial')
+summary(logit)
+confint(logit)
+```
+
+Yes the Xray and Acid variables both have p values below the .05 threshold and strictly positive 95% confidence intervals.
+
+# c)
+```{r}
+reduced.logit = glm(r ~ stage + xray + acid, data = nodal)
+summary(reduced.logit)
+reduced.linpred = predict(reduced.logit,nodal , type = 'response')
+plot(residuals(reduced.logit)~reduced.linpred,xlab='Linear Predictor',ylab='Deviance Residuals')
+linpred = predict(logit,nodal, type = 'response' )
+plot(residuals(logit)~linpred,xlab='Linear Predictor',ylab='Deviance Residuals')
+```
+
+Yes the smaller model could be preferred over the larger model because the deviance residuals are much smaller.
+
+# d)
+A serious x ray result increases the odds of having nodal involvement by `r exp(reduced.logit$coefficients[[3]])` compared to a non serious x ray result. The 95% confidence interval for the change in odds is `r exp(confint(reduced.logit)[2,])`
+
+# e)
+```{r}
+logit.inter = glm(r ~ .^2, data = nodal, family = binomial)
+summary(logit.inter)
+```
+
+The standard errors are very large because there is not enough data (information) to estimate all of the parameters. Some of the two way interactions are probably collinear with the original variables as well.
+
+# f)
+```{r}
+library(brglm)
+bmod = brglm(r ~ .^2, data = nodal, family = binomial)
+summary(bmod)
+
+```
+The stage and grade interaction has the largest coefficient.
+
+# g)
+```{r}
+br.pred = predict(bmod, nodal, type = 'response')
+nodal.preds=mutate(nodal,predout=ifelse(br.pred<0.5,0,1))
+xtabs(~r+predout,nodal.preds)
+
+logit.pred = predict(logit, nodal, type = 'response')
+nodal.preds=mutate(nodal,predout=ifelse(logit.pred<0.5,0,1))
+xtabs(~r+predout,nodal.preds)
+
+```
+
+The bias reduced model had one less miss classification than the full model. These models are probably over estimates of the classification rates of what one could expect in the future. Cross validation or boot strapping would need to be implemented to get a better idea of the future classification accuracy.

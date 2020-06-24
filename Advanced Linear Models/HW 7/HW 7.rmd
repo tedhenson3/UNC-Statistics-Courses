@@ -1,0 +1,156 @@
+---
+title: "HW 7"
+author: "Ted Henson"
+date: "3/30/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup}
+knitr::opts_chunk$set(message=F, warning=F,  eval = T)
+```
+
+# Question 2
+## a)
+```{r}
+library(faraway)
+data(coagulation)
+head(coagulation)
+library(ggplot2)
+library(tidyverse)
+ggplot(coagulation, aes(x = diet, y = coag)) + geom_boxplot()
+```
+
+It appears that diets D and A have low coagulation times comapred to diets B and C, which have very high coagulation times, especially C.
+
+## b)
+```{r}
+op=options(contrasts=c('contr.sum','contr.poly'))
+lmod=aov(coag~diet,coagulation)
+summary(lmod)
+new.data = data.frame(diet='D')
+predict(lmod, new.data, interval = 'prediction')
+```
+
+## c)
+```{r, message=F, warning=F}
+library(lme4)
+mmod=lmer(coag~diet+(1|diet),coagulation)
+options(op)
+
+summary(mmod)
+new.data = data.frame(diet='D')
+fit = predict(mmod, new.data,se.fit=T)
+
+group.sd=as.data.frame(VarCorr(mmod))$sdcor[1]
+resid.sd=as.data.frame(VarCorr(mmod))$sdcor[2]
+pv=numeric(1000)
+for(i in 1:1000){
+y=unlist(simulate(mmod))
+bmod=suppressMessages(refit(mmod,y))
+pv[i]=predict(bmod,new.data=data.frame(operator='D'))+rnorm(n=1,sd=resid.sd)
+}
+quantile(pv,c(0.025,0.975))
+```
+
+## d)
+```{r}
+
+for(i in 1:1000){
+y=unlist(simulate(mmod))
+bmod=suppressMessages(refit(mmod,y))
+pv[i]=predict(bmod,re.form=~0)[1]+rnorm(n=1,sd=group.sd)+rnorm(n=1,sd=resid.sd)
+}
+quantile(pv,c(0.025,0.975))
+```
+
+## e)
+```{r}
+
+for(i in 1:1000){
+y=unlist(simulate(mmod))
+bmod=suppressMessages(refit(mmod,y))
+pv[i]=predict(bmod,re.form=~0)[1]+rnorm(n=1,sd=group.sd)+rnorm(n=1,sd=resid.sd)
+}
+quantile(pv,c(0.025,0.975))
+```
+
+# Question 3
+## a)
+```{r}
+data(eggprod)
+ggplot(eggprod, aes(x=block, y = eggs)) + geom_boxplot()
+ggplot(eggprod, aes(x=treat, y = eggs)) + geom_boxplot()
+
+ggplot(eggprod, aes(x=treat, y = eggs)) + geom_point() + facet_grid(~ block)
+
+```
+
+Across the board treatment o and block 4 appear to produce the lowest eggs, but when combined, these effects do not remain. The lowest number of eggs occured with treatment O and block 2.
+
+## b)
+```{r}
+lmod=aov(eggs~treat+block,eggprod)
+summary(lmod)
+
+```
+
+Based on the p values the treatment variable apperas to be significant, but the block variable may not be after accounting for the treatment.
+
+## c)
+```{r}
+mmod=lmer(eggs~treat+(1|block),eggprod)
+summary(mmod)
+fixef(mmod)
+
+
+```
+
+According to this model, treatment E is best at maximizing egg production, but we cannot be sure because of the random effects imposed by the block variable.
+
+## d)
+```{r}
+library(pbkrtest)
+nmod=lmer(eggs~1+(1|block),eggprod)
+
+KRmodcomp(mmod,nmod)
+
+
+```
+
+The Kenward-Roger approximation agrees with the fixed effects model that the treatments are significant.
+
+## e)
+```{r}
+#parametric bootstrap
+amod=lmer(eggs~treat+(1|block),eggprod,REML=F)
+nmod=lmer(eggs~1+(1|block),eggprod,REML=F)
+pmod=PBmodcomp(amod,nmod)
+summary(pmod)
+
+
+```
+
+The paramatric bootstrap agrees that the treatments are significant.
+
+## f)
+```{r}
+rmod=lmer(eggs~treat+(1|block),eggprod)
+nlmod=lm(eggs~treat,eggprod)
+as.numeric(2*(logLik(rmod)-logLik(nlmod,REML=T)))
+
+lrtstatf=numeric(1000)
+for(i in 1:1000){
+reggs=unlist(simulate(nlmod))
+nlmodr=lm(reggs~treat,eggprod)
+#rmodr=refit(rmod,reggs)
+rmodr=lmer(reggs~treat+(1|block),eggprod)
+lrtstatf[i]=2*(logLik(rmodr)-logLik(nlmodr,REML=T))
+}
+
+mean(lrtstatf<0.00001)
+mean(lrtstatf>as.numeric(2*(logLik(rmod)-logLik(nlmod,REML=T))))
+```
+
+The bootstrapping test agrees with the fixed results test that the blocks are not significant.

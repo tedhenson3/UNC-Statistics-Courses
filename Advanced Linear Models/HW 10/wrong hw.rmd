@@ -1,0 +1,41 @@
+---
+title: "HW 7"
+author: "Ted Henson"
+date: "3/25/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Chapter 10, Questions 2 and 3 (page 233)
+
+# Question 2
+## a)
+```{r}
+library(faraway)
+data(potuse)
+head(potuse)
+library(ggplot2)
+library(tidyverse)
+potuse2= potuse %>% pivot_longer(`year.76`:`year.80`, names_to = 'year')
+potuse2$year = gsub('year.', '', potuse2$year, fixed = T)
+potuse2$year = as.numeric(potuse2$year)
+potuse2 = unique(potuse2)
+summary = potuse2 %>% group_by(sex, year, value) %>% summarise(usage.count = sum(count))
+ggplot(summary, aes(x=year, y = usage.count)) + geom_point() + facet_grid(sex ~ value)
+```
+## b)
+```{r}
+summary$usage.basic = ifelse(summary$usage == 1, 0, 1)
+```
+
+
+# Question 3
+## a)
+```{r}
+data("wavesolder")
+```
+

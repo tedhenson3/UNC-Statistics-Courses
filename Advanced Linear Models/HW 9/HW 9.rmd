@@ -1,0 +1,141 @@
+---
+title: "HW 9"
+author: "Ted Henson"
+date: "4/13/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+```
+
+
+# Chapter 11, questions 3 and 5, pages 252-254.
+
+# real page 268
+# Question 3
+## a)
+```{r}
+library(faraway)
+library(lme4)
+library(tidyverse)
+data(nepali)
+nepali = nepali %>% dplyr::select(-ht)
+nepali = na.omit(nepali)
+nepali$sex = ifelse(nepali$sex == 1, 'M', 'F')
+head(nepali)
+library(ggplot2)
+ggplot(nepali, aes(x=age, y = wt)) + geom_point() + facet_wrap(. ~ sex)
+```
+
+Weight generally icreases with age for both males and females. Female weight may be more variable at higher ages.
+
+## b)
+```{r}
+mod = lm(wt~ age+sex+mage+lit+died, data = nepali)
+summary(mod)
+```
+
+All terms except for the died variable appear to be significant in this model.
+
+## c)
+```{r}
+mmod=lmer(wt~ age*sex + lit + mage + (1|id),nepali)
+summary(mmod)
+```
+
+The predicted difference in child weight for a mother at age 25 compared to 15 would be 0.508327 (10*.0508327). The expected difference between identical twins would be .437, the standard deviation within a given id. This seems reasonable as identical twins often have almost identical physical features, including weight, due to their identical genetic makeup, but minor environmental differences cause minor differences in physical features, such as weight.
+
+## d)
+```{r}
+plot(predict(mmod), residuals(mmod))
+abline(a = 0, b=0)
+qqnorm(residuals(mmod))
+qqline(residuals(mmod))
+qqnorm(ranef(mmod)$"id"[[1]],main='')
+qqline(ranef(mmod)$"id"[[1]],main='')
+
+```
+
+The residuals appear to be fairly normal, but slightly more negative towards the lower quantiles and more positive in the upper quantiles. The qqnorm plot of the random effects of the id has a similar trend.
+
+## e)
+```{r}
+mmod=lmer(wt~ age + mage + (1|id),nepali)
+plot(predict(mmod), residuals(mmod))
+abline(a = 0, b=0)
+qqnorm(residuals(mmod))
+qqline(residuals(mmod))
+qqnorm(ranef(mmod)$"id"[[1]],main='')
+qqline(ranef(mmod)$"id"[[1]],main='')
+```
+
+The diagnostic plots show almost no improvement by including more terms as was done previously so the simplified model is most likely better.
+
+## f)
+```{r}
+```
+
+## g)
+```{r}
+```
+
+# Question 5
+## a)
+```{r}
+data(sleepstudy)
+ggplot(sleepstudy, aes(x=Days, y = Reaction)) + geom_point() + facet_wrap(. ~ Subject)
+```
+
+The reaction generally increases with the number of days, but the strength and variability of the increase vary widely between subjects.
+
+## b)
+```{r}
+mmod = lmer(Reaction ~ Days +  (1+Days|Subject),
+            data = sleepstudy)
+summary(mmod)
+```
+
+Under this model it would be unusual for a subject's reaction time to decrease over time.
+
+## c)
+```{r}
+mmod2 = lmer(Reaction ~ Days + I(Days^2)+ (1+Days|Subject),
+            data = sleepstudy)
+summary(mmod2)
+```
+
+The model had a high standard error and low t value for the quadratic term.
+
+
+## d)
+```{r}
+plot(predict(mmod), residuals(mmod))
+abline(a = 0, b=0)
+qqnorm(residuals(mmod))
+qqline(residuals(mmod))
+qqnorm(ranef(mmod)$"Subject"[[1]],main='')
+qqline(ranef(mmod)$"Subject"[[1]],main='')
+qqnorm(ranef(mmod)$"Subject"[[2]],main='')
+qqline(ranef(mmod)$"Subject"[[2]],main='')
+plot(ranef(mmod)$"Subject"[[1]], ranef(mmod)$"Subject"[[2]])
+```
+
+The residuals appear to be fairly normal and centered around zero, although there are a few potential outliers. The random effects of the intercept and slope of the days appear to be somewhat correlated.
+
+## e)
+```{r}
+dat = sleepstudy[which(abs(residuals(mmod)) < 98),]
+mmod3 = lmer(Reaction ~ Days +  (1+Days|Subject),
+            data = dat)
+summary(mmod3)
+```
+
+The random intercept term for the subject had the largest increase. The random slope of the days had a small increase, and the fixed effects were almost the same as the initial model.
+
+## f)
+```{r}
+plot(predict(mmod), sleepstudy$Reaction)
+```
+
+The predicted values are fairly close to the actual reaction values.

@@ -1,0 +1,79 @@
+---
+title: "HW1"
+author: "Ted Henson"
+date: "1/14/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = F, eval = T, include=F}
+library(readr, quietly = T)
+library(MASS, quietly = T)
+library(tidyverse, quietly = T)
+```
+
+```{r}
+setwd('~/Advanced Linear Models/HW 1/')
+voters <- read_csv("ProportionNotReturned.csv")
+```
+
+# Problem 1
+```{r}
+weights = ifelse(voters$County %in% c('ROBESON', 'BLADEN') == F, 1, 0)
+full.model = lm(PNR ~ ., data = voters[,2:ncol(voters)], weights = weights)
+```
+
+```{r}
+confint(full.model)
+```
+
+```{r}
+none = lm(PNR ~ 1, data = voters)
+step.mod = stepAIC(none, scope = list(upper = full.model),  direction = 'both')
+summary(step.mod)
+```
+
+```{r}
+hist(step.mod$residuals)
+plot(step.mod$fitted.values, step.mod$residuals)
+abline(a = 0, b= 0)
+qqnorm(step.mod$residuals)
+qqline(step.mod$residuals)
+```
+
+
+# Problem 2
+```{r, warning=F}
+
+intervals = predict.lm(full.model,
+                      set.fit = T,
+                      interval = 'prediction',
+                      level = .99,
+                      weights = 1)
+cbind(voters[which(weights == 0),'County'], intervals[which(weights == 0),])
+
+```
+
+# Problem 3
+```{r}
+dat = data.frame(County = voters$County[which(weights == 0)],
+Excess.PNR = voters$PNR[which(weights == 0)] - intervals[which(weights == 0),'upr'])
+dat
+
+```
+
+# Problem 4
+```{r}
+data.frame(County = voters[which(weights == 0),'County'],
+           Unaccounted.Absentee = voters$AbsBal[which(weights == 0)]*dat$Excess.PNR)
+
+```
+
+# Problem 5
+  Using a linear regression model built on on all counties that were not Bladen or Robeson and stepwise selection, with AIC as the criterion, a model to predict the PNR was composed of an intercept and the number of black voters. Confidence intervals of a model of all variables confirmed that this was the only statistically significant variable. Plots of the residuals showed that the residuals were mostly normally distributed aside from a couple of outliers which are our counties of question.
+  Using this model, a 99% prediction interval for the PNR was computed for Bladen and Robeson county. The true PNR for these counties was far higher than the upper 99% prediction interval. 
+  About 11% of absentee ballots were not returned for each of these counties, and the upper 99% interval for these counties was about 3.5%. So over 7.5% of the ballots missing from these counties are unexpected based on the model. This proportion times the number of absentees requested equates to about 637 unexplainable missing ballots for Bladen and 1217 for Boeson. These counties had many more missing ballots than other counties; moreover, the models were unable to explain these unexpected results based on the voting data. More investigation into these counties voting results is needed to explain the excess missing ballots.
+  
