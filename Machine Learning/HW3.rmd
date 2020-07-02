@@ -1,0 +1,694 @@
+---
+title: "STOR 565 Fall 2019 Homework 3"
+author: "Ted Henson"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+header-includes: \usepackage{amsgen,amsmath,amstext,amsbsy,amsopn,amssymb,mathabx,amsthm,bm,bbm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require(ISLR)) { install.packages("ISLR", repos = "http://cran.us.r-project.org"); library(ISLR) }
+if(!require(leaps)) { install.packages("leaps", repos = "http://cran.us.r-project.org"); library(leaps) }
+if(!require(glmnet)) { install.packages("glmnet", repos = "http://cran.us.r-project.org"); library(glmnet) }
+if(!require(pls)) { install.packages("pls", repos = "http://cran.us.r-project.org"); library(pls) }
+```
+\theoremstyle{definition}
+\newtheorem*{hint}{Hint}
+
+\theoremstyle{remark}
+\newtheorem*{rmk}{Remark}
+
+*Remark.* This homework aims to help you further understand the model selection techniques in linear model. Credits for **Theoretical Part** and **Computational Part** are in total 100 pt. For **Computational Part** , please complete your answer in the **RMarkdown** file and summit your printed PDF homework created by it.
+
+## Computational Part
+
+**Hint.** Before starting your work, carefully read Textbook Chapter 6.5-6.7 (Lab 1-3). Mimic the related analyses you learn from it. Also look at the demonstrations I showed you in class (see Sakai/Resources/Lectures and click on each Lecture for demonstrations). Some related packages have been loaded in setup.
+
+1. (Model Selection, Textbook 6.8, *18 pt*) In this exercise, we will generate simulated data, and will then use this data to perform model selection.
+
+(a) Use the `rnorm` function to generate a predictor $\bm{X}$ of length $n = 100$, as well as a noise vector $\bm{\epsilon}$ of length $n = 100$. Do not print the entire vector.
+```{r}
+set.seed(336)
+
+x = matrix(rnorm(100),ncol=1)
+
+
+e = matrix(rnorm(100),ncol=1)
+
+```
+    
+**Hint.** Before generating random numbers, fix your favourite random seed by `set.seed` so that your result is reproducible as you carry forward your exploration.
+
+(b) Generate a response vector $\bm{Y}$ of length $n = 100$ according to the model $$ Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \beta_3 X^3 + \epsilon, $$ where $\beta_0 = 3$, $\beta_1 = 2$, $\beta_2 = -3$, $\beta_3 = 0.3$. Do not print the entire vector.
+```{r}
+
+beta = function(x){3 + 2*x - 3*(x^2) + .3*(x^3)}
+
+y = beta(x) + e
+```
+
+(c) Use the `regsubsets` function from `leaps` package to perform best subset selection in order to choose the best model containing the predictors $(X, X^2, \cdots, X^{10})$. 
+    
+What is the best model obtained according to $C_p$, BIC, and adjusted $R^2$? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained.
+    
+```{r}
+data = matrix(nrow = nrow(x),
+              ncol = 10)
+data[,1] = x[,1]
+data[,2] = data[,1]^2
+data[,3] = data[,1]^3
+data[,4] = data[,1]^4
+data[,5] = data[,1]^5
+data[,6] = data[,1]^6
+data[,7] = data[,1]^7
+data[,8] = data[,1]^8
+data[,9] = data[,1]^9
+data[,10] = data[,1]^10
+
+colnames(data) = c('x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10')
+
+reduced = regsubsets(y = y,
+                     x = data,
+                     nvmax = 10)
+results = summary(reduced)
+
+plot(y = results$adjr2[1:10], x = c(1:10),
+     main = 'Best Subset Model',
+     ylab = 'Adjusted R squared', 
+     xlab = 'Number of predictors')
+
+
+plot(y = results$cp[1:10], x = c(1:10),
+     main = 'Best Subset Model',
+     ylab = 'Cp', xlab = 'Number of predictors')
+
+
+plot(y = results$bic[1:10], x = c(1:10),
+     main = 'Best Subset Model',
+     ylab = 'BIC', xlab = 'Number of predictors')
+
+
+```
+
+The model with the lowest cp has `r which.min(results$cp)` predictors. The model with the highest adjusted R squared has `r which.max(results$adjr2)` predictors. The  model with the lowest bic has `r which.min(results$bic)` predictors. Overall the best model is probably the model with 3 predictors, as the changes in cp, BIC, and adjr2 are marginal with additional predictors. The coeffecients for our chosen model are: 
+```{r}
+coef(reduced, 3)
+
+
+```
+
+
+
+(d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the results in (c)? You must show a summary of the selected model or other evidence to support your statements.
+    
+```{r}
+
+forward = regsubsets(y = y,
+                     x = data,
+                     nvmax = 10,
+                     method = 'forward')
+
+backward = regsubsets(y = y,
+                     x = data,
+                     nvmax = 10,
+                     method = 'backward')
+
+results = summary(forward)
+
+
+
+plot(y = results$adjr2[1:10], x = c(1:10),
+     main = 'Forward Stepwise Model',
+     ylab = 'Adjusted R squared', xlab = 'Number of predictors')
+
+
+plot(y = results$cp[1:10], x = c(1:10),
+     main = 'Forward Stepwise Model',
+     ylab = 'Cp', xlab = 'Number of predictors')
+
+
+plot(y = results$bic[1:10], x = c(1:10),
+     main = 'Forward Stepwise Model',
+     ylab = 'BIC', xlab = 'Number of predictors')
+
+results = summary(backward)
+
+plot(y = results$adjr2[1:10], x = c(1:10),
+     main = 'Backward Stepwise Model',
+     ylab = 'Adjusted R squared', xlab = 'Number of predictors')
+
+
+plot(y = results$cp[1:10], x = c(1:10),
+     main = 'Backward Stepwise Model',
+     ylab = 'Cp', xlab = 'Number of predictors')
+
+
+plot(y = results$bic[1:10], x = c(1:10),
+     main = 'Backward Stepwise Model',
+     ylab = 'BIC', xlab = 'Number of predictors')
+
+
+
+
+```
+
+
+Using forward stepwise selection, the best model has 4 predictors as the changes in CP and adjr2 begin to level out at 3 predictors, and the BIC levels out (and increases) after adding the fifth predictor. Using backward stepwise selection, the best model has 6 predictors as the BIC begins to increase after adding a 7th predictor, and the CP and adjr2 have leveled out. The coeffecients for our forward model are: 
+```{r}
+print(coef(forward, 4))
+
+```
+
+The coeffecients for our backward model are: 
+```{r}
+print(coef(backward, 6))
+
+```
+
+All three models contain X2 and X3 as predictor variables. Best Subsets and Forward Stepwise also both contain X1 as a predictor.
+
+
+(e) Now fit a LASSO model with `glmnet` function from `glmnet` package to the simulated data, again using $(X,X^2,\cdots,X^{10})$ as predictors. Use 5-fold cross-validation to select the optimal value of $\lambda$. Create plots of the cross-validation error as a function of $\lambda$. Report the resulting coefficient estimates, and discuss the results obtained.
+    
+    ```{r}
+lasso.mod = cv.glmnet(y = y, x = data, alpha = 1,
+                      nfolds = 5)
+plot(x = lasso.mod$lambda, y = lasso.mod$cvm)
+print('Lasso Regression Coefficients:')
+coef(lasso.mod)
+
+
+```
+The lasso model found that the only nonzero coefficients were X1, X2, and X3. These were the only coefficients used to generate our data so the lasso model will be better at predicting future data generated from our function than the previous models trained.
+
+
+(f) Now generate a response vector $Y$ according to the model $$Y = \beta_0 + \beta_7 X^7 + \epsilon,$$ where $\beta_7 = 7$, and perform best subset selection and the LASSO. Discuss the results obtained.
+    
+    ```{r}
+beta = function(x){0 + 7*x^7}
+    
+y = beta(x) + e
+
+reduced = regsubsets(y = y,
+                     x = data,
+                     nvmax = 10)
+subsets.results = summary(reduced)
+
+lasso.mod = cv.glmnet(y = y, x = data, alpha = 1,
+                      nfolds = 5)
+
+print('Lasso Regression Coefficients:')
+coef(lasso.mod)
+
+plot(y = subsets.results$adjr2[1:10], x = c(1:10),
+     main = 'Best Subsets',
+     ylab = 'Adjusted R squared', xlab = 'Number of predictors')
+
+
+plot(y = subsets.results$cp[1:10], x = c(1:10),
+     main = 'Best Subsets',
+     ylab = 'Cp', xlab = 'Number of predictors')
+
+
+plot(y = subsets.results$bic[1:10], x = c(1:10),
+     main = 'Best Subsets',
+     ylab = 'BIC', xlab = 'Number of predictors')
+
+print('Subset Regression Coefficients:')
+coef(reduced, 6)
+
+```
+
+Depending on your criterion, the best subset model would chose 6 or 7 predictors despite our function only being generated from one variable (x7). Our lasso regression was able to shrink all other variables to 0, so we conclude that the lasso regression model is better.
+    
+---
+    
+    
+2. (Prediction, *20 pt*) In this exercise, we will try to develop a prediction model for wins in a basketball season for a team based on a host of other factors. The starting point is to load the nba-teams-2017 data set (which was scraped by Gaston Sanchez at Berkeley). 
+
+(a) Do some exploratory data analysis by picking 6-7 features that you think might be interesting and explore relationship between these features by making a scatterplot matrix like the following (you **do not** have to use the same features I am using!):
+
+```{r}
+library(readr, quietly = T)
+nba_teams_2017 <- read_csv("nba-teams-2017.csv")
+
+library(caret, quietly = T)
+
+```
+```{r}
+pairs(wins ~ free_throws_att + points3_attempted + plus_minus + assists + points + turnovers, data = nba_teams_2017)
+
+```
+
+
+
+
+*NOTE: You may remove the includegraphics statements below when knitting your own response, if they are giving you trouble*
+
+
+(b) The aim is now to predict *wins* based on the other features. First explain why you would remove the "losses" column from the above data set? Would you necessarily remove any other columns?
+
+```{r}
+```
+
+You would remove the losses column because it is redudant: losses is a linear combination of the wins and games columns (games minus wins). Game number is also the same for every observation so we should remove that as well. Winprop will have the same variance as wins so we should remove that to avoid auto correlation. Since we only have one observation per team, we should also remove that column.
+
+(c) Use ridge regression with 5 fold cross-validation to choose the optimal tuning parameter and report your model along with your test error as found by cross-validation for that choice of $\lambda$. 
+
+```{r}
+library(tidyverse)
+nba_teams_2017.reduced = nba_teams_2017 %>% dplyr::select(-c(team,
+                                                      games_played,
+                                                      losses,
+                                                      wins,
+                                                      win_prop))
+
+ridge = cv.glmnet(x = as.matrix(nba_teams_2017.reduced),
+                  y = nba_teams_2017$wins,
+                  alpha = 0, nfolds = 5)
+plot(x = ridge$lambda, y = ridge$cvm)
+
+
+```
+
+
+The best test error was `r min(ridge$cvm)` wins from the optimal lambda 
+of `r ridge$lambda.min`.
+
+
+(d) Fit a LASSO model on the training set, with $\lambda$ chosen by 5-fold cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+```{r}
+
+
+lasso = cv.glmnet(x = as.matrix(nba_teams_2017.reduced),
+                  y = nba_teams_2017$wins,
+                  alpha = 1, nfolds = 5)
+ plot(x = lasso$lambda, y = lasso$cvm)
+print('Coefficients:')
+coef(lasso)
+
+```
+
+
+The only non-zero coefficient was plus_minus. The best test error was `r min(lasso$cvm)` wins wins from the optimal lambda of `r lasso$lambda.min`.
+
+
+---
+
+3. Let us now try to understand the performance of the various techniques on simulated data to get insight.
+
+Suppose your true model is  $\mathbf{y}=\mathbf{X\beta} + \mathbf{\epsilon}$
+
+where:
+
+- $\mathbf{\beta}=(\underbrace{1,...,1}_{20}, \underbrace{0,...,0}_{1980})^T$
+- $p=2000 > n=1000$
+- Uncorrelated predictors: 
+    + $\mathbf{X}_i \overset{\text{iid}}{\sim} N(\mathbf{0}, \mathbf{I})$. Precisely for the $i$-th individual, $\mathbf{X}_i = (X_{i1}, X_{i2}, \ldots, X_{i,2000})$ where $X_{i,j}$ are independent and identically distributed normal random variables with mean zero and variance one. 
+- $\mathbf{\epsilon} \overset{\text{iid}}{\sim} N(\mathbf{0},\mathbf{I})$. Precisely: $\mathbf{\epsilon} = (\epsilon_1, \epsilon_2, \ldots, \epsilon_{1000})$ where $\epsilon_i$ are independent and identically distributed normal random variables with mean zero and variance 1.  
+
+
+
+(a)(2 pt) Generate the above data with seed = 1234
+
+
+```{r}
+set.seed(1234)
+beta = c(rep(1,20), rep(0,1980))
+
+
+x = matrix(data = rnorm(mean = 0, 
+            n = 1000*2000,
+            sd = 1), 
+           nrow = 1000,
+         ncol = 2000)
+
+
+e = rnorm(n = 1000, mean = 0, sd = 1)
+
+
+y = x %*% beta + e
+
+
+```
+
+
+
+(b) (6 pt) Using glmnet fit Lasso, ridge regression and elastic net with $\alpha = .1,.2,.3,.4,.5,.6,.7, .8, .9$
+
+```{r}
+```
+
+What I am looking for: (outputting the entire model for each one of the above is not-trivial so):
+
+- code showing the fitting of each of the above models
+```{r}
+
+alpha = c(0, .2, .3, .4, .5, .6, .7, .8, .9, 1)
+
+
+ridge =  cv.glmnet(x = x, y = y,
+               alpha = alpha[1],
+               nfolds = 6
+               )
+
+enet.2 = cv.glmnet(x = x, y = y,
+               alpha = alpha[2],
+               nfolds = 6
+               )
+
+enet.3 = cv.glmnet(x = x, y = y,
+               alpha = alpha[3],
+               nfolds = 6)
+
+enet.4 = cv.glmnet(x = x, y = y,
+               alpha = alpha[4],
+               nfolds = 6)
+
+
+enet.5 = cv.glmnet(x = x, y = y,
+               alpha = alpha[5],
+               nfolds = 6)
+
+enet.6 = cv.glmnet(x = x, y = y,
+               alpha = alpha[6],
+               nfolds = 6)
+
+enet.7 = cv.glmnet(x = x, y = y,
+               alpha = alpha[7],
+               nfolds = 6)
+
+enet.8 = cv.glmnet(x = x, y = y,
+               alpha = alpha[8],
+               nfolds = 6)
+
+enet.9 = cv.glmnet(x = x, y = y,
+               alpha = alpha[9],
+               nfolds = 6)
+
+lasso = cv.glmnet(x = x, y = y,
+               alpha = alpha[10],
+               nfolds = 6)
+
+```
+
+- For ridge, Lasso and for $\alpha = .2, ,.4 ,.6$ plot the cross-validated (6 fold) MSE versus lambda as well as your optimal value of $lambda$ for ridge, Lasso and for $\alpha = .2, ,.4 ,.6$
+
+```{r}
+plot(x = ridge$lambda, y = ridge$cvm)
+
+plot(x = enet.2$lambda, y = enet.2$cvm)
+
+
+plot(x = enet.4$lambda, y = enet.4$cvm)
+
+
+plot(x = enet.6$lambda, y = enet.6$cvm)
+plot(x = lasso$lambda, y = lasso$cvm)
+
+
+```
+
+Ridge optimal lambda value:
+`r ridge$lambda.min`
+
+Enet .2 optimal lambda value:
+`r enet.2$lambda.min`
+
+Enet .4 optimal lambda value:
+`r enet.4$lambda.min`
+
+Enet .6 optimal lambda value:
+`r enet.6$lambda.min`
+
+Lasso optimal lambda value:
+`r lasso$lambda.min`
+
+- The number of non-zero regression coeffecients for each of the above techniques. 
+```{r}
+ridge.coeff = nrow(summary(coef(ridge, s= 'lambda.min')))
+enet.2.coeff = nrow(summary(coef(enet.2, s= 'lambda.min')))
+enet.4.coeff = nrow(summary(coef(enet.4, s= 'lambda.min')))
+enet.6.coeff = nrow(summary(coef(enet.6, s= 'lambda.min')))
+lasso.coeff = nrow(summary(coef(lasso, s= 'lambda.min')))
+
+```
+
+Number of nonzero coefficients in ridge model:
+`r ridge.coeff`
+
+Number of nonzero coefficients in enet.2 model:
+`r enet.2.coeff`
+
+Number of nonzero coefficients in enet.4 model:
+`r enet.4.coeff`
+
+Number of nonzero coefficients in enet.6 model:
+`r enet.6.coeff`
+
+Number of nonzero coefficients in lasso model:
+`r lasso.coeff`
+
+(c) (2 pt) Simulate an independent {\bf test} data set of the same type as above (response $y$ and $2000$ features per subject) with $n=10,000$. Use seed = 4567. 
+
+```{r}
+set.seed(4567)
+beta = c(rep(1,20), rep(0,1980))
+
+
+x = matrix(data = rnorm(mean = 0, 
+            n = 10000*2000,
+            sd = 1), 
+           nrow = 10000,
+         ncol = 2000)
+
+
+e = rnorm(n = 10000, mean = 0, sd = 1)
+
+
+y = x %*% beta + e
+```
+
+(d) (2 pt) Using the models you obtained above using the training data set and the 11 models above, compute average test error for each of the 11 models. Which one is the "best" model? 
+
+
+```{r}
+ridge.pred = predict(ridge, x)
+enet.2.pred = predict(enet.2, x)
+enet.4.pred = predict(enet.4, x)
+enet.6.pred = predict(enet.6, x)
+lasso.pred = predict(lasso, x)
+
+ridge.rmse = mean(sqrt((ridge.pred - y)^2))
+enet.2.rmse =  mean(sqrt((enet.2.pred - y)^2))
+enet.4.rmse =  mean(sqrt((enet.4.pred - y)^2))
+enet.6.rmse =  mean(sqrt((enet.6.pred - y)^2))
+lasso.rmse =  mean(sqrt((lasso.pred - y)^2))
+
+
+
+
+```
+
+
+RMSEs by increasing alpha:
+
+`r ridge.rmse`
+
+`r enet.2.rmse`
+
+`r enet.4.rmse`
+
+`r enet.6.rmse`
+
+`r lasso.rmse`
+
+
+The lasso had the smallest mean test error.
+
+4. Do all the 4 parts of problem 3 but where the underlying model is:
+
+$\mathbf{\beta}=(\underbrace{1,...,1}_{1000}, \underbrace{0,...,0}_{1000})^T$
+
+(a)(2 pt) Generate the above data with seed = 8910
+
+
+```{r}
+
+set.seed(8910)
+beta = c(rep(1,1000), rep(0,1000))
+
+
+x = matrix(data = rnorm(mean = 0, 
+            n = 10000*2000,
+            sd = 1), 
+           nrow = 10000,
+         ncol = 2000)
+
+
+e = rnorm(n = 10000, mean = 0, sd = 1)
+
+
+y = x %*% beta + e
+```
+
+
+
+(b) (6 pt) Using glmnet fit Lasso, ridge regression and elastic net with $\alpha = .1,.2,.3,.4,.5,.6,.7, .8, .9$
+
+```{r}
+```
+
+What I am looking for: (outputting the entire model for each one of the above is not-trivial so):
+
+- code showing the fitting of each of the above models
+```{r}
+
+alpha = c(0, .2, .3, .4, .5, .6, .7, .8, .9, 1)
+
+
+ridge =  cv.glmnet(x = x, y = y,
+               alpha = alpha[1],
+               nfolds = 6
+               )
+
+enet.2 = cv.glmnet(x = x, y = y,
+               alpha = alpha[2],
+               nfolds = 6
+               )
+
+enet.3 = cv.glmnet(x = x, y = y,
+               alpha = alpha[3],
+               nfolds = 6)
+
+enet.4 = cv.glmnet(x = x, y = y,
+               alpha = alpha[4],
+               nfolds = 6)
+
+
+enet.5 = cv.glmnet(x = x, y = y,
+               alpha = alpha[5],
+               nfolds = 6)
+
+enet.6 = cv.glmnet(x = x, y = y,
+               alpha = alpha[6],
+               nfolds = 6)
+
+enet.7 = cv.glmnet(x = x, y = y,
+               alpha = alpha[7],
+               nfolds = 6)
+
+enet.8 = cv.glmnet(x = x, y = y,
+               alpha = alpha[8],
+               nfolds = 6)
+
+enet.9 = cv.glmnet(x = x, y = y,
+               alpha = alpha[9],
+               nfolds = 6)
+
+lasso = cv.glmnet(x = x, y = y,
+               alpha = alpha[10],
+               nfolds = 6)
+```
+
+- For ridge, Lasso and for $\alpha = .2, ,.4 ,.6$ plot the cross-validated (6 fold) MSE versus lambda as well as your optimal value of $lambda$ for ridge, Lasso and for $\alpha = .2, ,.4 ,.6$
+
+```{r}
+plot(x = ridge$lambda, y = ridge$cvm)
+plot(x = enet.2$lambda, y = enet.2$cvm)
+plot(x = enet.4$lambda, y = enet.4$cvm)
+plot(x = enet.6$lambda, y = enet.6$cvm)
+plot(x = lasso$lambda, y = lasso$cvm)
+```
+
+Ridge optimal lambda value:
+`r ridge$lambda.min`
+
+Enet .2 optimal lambda value:
+`r enet.2$lambda.min`
+
+Enet .4 optimal lambda value:
+`r enet.4$lambda.min`
+
+Enet .6 optimal lambda value:
+`r enet.6$lambda.min`
+
+Lasso optimal lambda value:
+`r lasso$lambda.min`
+
+
+- The number of non-zero regression coeffecients for each of the above techniques. 
+
+
+Number of nonzero coefficients in ridge model:
+`r ridge.coeff`
+
+Number of nonzero coefficients in enet.2 model:
+`r enet.2.coeff`
+
+Number of nonzero coefficients in enet.4 model:
+`r enet.4.coeff`
+
+Number of nonzero coefficients in enet.6 model:
+`r enet.6.coeff`
+
+Number of nonzero coefficients in lasso model:
+`r lasso.coeff`
+
+(c) (2 pt) Simulate an independent {\bf test} data set of the same type as above (response $y$ and $2000$ features per subject) with $n=10,000$. Use seed = 1112. 
+
+```{r}
+set.seed(1112)
+beta = c(rep(1,1000), rep(0,1000))
+
+
+x = matrix(data = rnorm(mean = 0, 
+            n = 10000*2000,
+            sd = 1), 
+           nrow = 10000,
+         ncol = 2000)
+
+
+e = rnorm(n = 10000, mean = 0, sd = 1)
+
+
+y = x %*% beta + e
+```
+
+(d) (2 pt) Using the models you obtained above using the training data set and the 11 models above, compute average test error for each of the 11 models. Which one is the "best" model? 
+
+
+```{r}
+ridge.pred = predict(ridge, x)
+enet.2.pred = predict(enet.2, x)
+enet.4.pred = predict(enet.4, x)
+enet.6.pred = predict(enet.6, x)
+lasso.pred = predict(lasso, x)
+
+ridge.rmse = mean(sqrt((ridge.pred - y)^2))
+enet.2.rmse =  mean(sqrt((enet.2.pred - y)^2))
+enet.4.rmse =  mean(sqrt((enet.4.pred - y)^2))
+enet.6.rmse =  mean(sqrt((enet.6.pred - y)^2))
+lasso.rmse =  mean(sqrt((lasso.pred - y)^2))
+
+```
+
+RMSEs in order of increasing alpha:
+
+`r ridge.rmse`
+
+`r enet.2.rmse`
+
+`r enet.4.rmse`
+
+`r enet.6.rmse`
+
+`r lasso.rmse`
+
+
+The lasso model is the best model.
+

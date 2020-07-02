@@ -1,0 +1,384 @@
+---
+title: "STOR 565 Fall 2019 Homework 1"
+author: "Ted Henson"
+header-includes:
+- \usepackage{amsgen,amsmath,amstext,amsbsy,amsopn,amssymb,mathabx,amsthm,bm,bbm}
+- \usepackage[labelsep=space]{caption}
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+subtitle: \textbf{Due on 09/03/2019 in Class}
+#bibliography: bibfile.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\theoremstyle{definition}
+\newtheorem*{hint}{Hint}
+\newtheorem*{pchln}{Punchline}
+
+\theoremstyle{remark}
+\newtheorem*{rmk}{Remark}
+
+*Remark.* This homework aims to introduce you to the basics in **R**, which would be the main software we shall work on throughout this course. It might look like a long homework but it has only 13 problems. The rest are explanations regarding basic things in R. **Total number of points**: 120. Recall all Homeworks are worth the same weight when I compute your final grade. I will convert each HW to out of 100 then and compute the average of your HW scores. 
+
+
+
+**Exercise 1.** *(5 pt)* Using the `c`, `rep` or `seq` commands, create the following 6 vectors:
+
+x1 = (2, .5, 4, 2);
+
+x2 = (2, .5, 4, 2, 1, 1, 1, 1);
+
+x3 = (1, 0, -1, -2);
+
+x4 = ("Hello"," ","World", "!", "Hello World!");
+
+*Note:* The quotation marks and sometimes the exclamations marks are rendered a little funky in the pdf/html. Just go with it. 
+
+**Hint.** For x4, take this opportunity to experiment with the `paste` function.
+
+x5 = (TRUE, TRUE, NA, FALSE);
+
+**Remark.** Check `?NA` and `class(NA)` to learn more about the missing value object `NA`. This is not relevant for x5. 
+
+x6 = (1, 2, 1, 2, 1, 1, 2, 2).
+
+```{r, eval=T}
+library(tinytex)
+x1 = c(2, .5, 4, 2)
+x1
+x2 = c(2, .5, 4, 2, 1, 1, 1, 1)
+x2
+x3 = c(1, 0, -1, -2)
+x3
+x4 = paste("Hello"," ","World", "!", "Hello World!", sep = "")
+x4
+x5 = c(rep(TRUE, 2), NA, FALSE)
+x5
+```
+
+
+**Exercise 2.** *(5 pt)* Using `matrix`, and `rbind`, create
+$$ \textbf{X} = 
+\begin{pmatrix} 
+1 &  2 &  3  &  4\\
+1 &  0 & -1  & -2\\
+2 & .5 &  4  &  2\\
+1 &  1 &  1  &  1
+\end{pmatrix}
+$$
+More precisely first define a set of four vectors corresponding to the rows of the above matrix and then use rbind to make a corresponding matrix. Note: you will need to play around with the `deparse.level` option in `rbind` to get the matrix as above. 
+
+```{r, eval=T}
+r1 = c(1, 2, 3, 4)
+r2 = c(1, 0, -1, -2)
+r3 = c(2, .5, 4, 2)
+r4 = (rep(1, 4))
+X = rbind(r1, r2, r3, r4)
+X
+```
+
+
+**Exercise 3.** *(4 pt)*: Consider the matrix X from Exercise 2. 
+
+- Make a new vector y1 consisting of all the elements of X which are negative (strictly less than zero). 
+
+```{r, eval=T}
+y1 <- X[X < 0]
+y1
+```
+
+- Make a new vector y2 consisting of all the elements of X which are at strictly positive but less than 2. 
+
+```{r, eval=T}
+y2 <- X[X > 0 & X < 2]
+y2
+```
+
+
+**Exercise 4.** *(5 pt)* Applying the conditional selection technique (see the section "indexing" and do not use  *subset*), extract the record of student 003 i.e their id number, and their scores in the two tests.
+
+```{r, eval=T}
+students <- data.frame( id      = c("001", "002", "003"), # ids are characters
+                        score_A = c(95, 97, 90),          # scores are numericss
+                        score_B = c(80, 75, 84)) 
+students[which(students$id == "003"), ]
+
+```
+
+
+**Exercise 5.** *(10 pt)* Create a data.frame object to display the calendar for Jan 2018 as follows.
+
+
+```{r, eval = FALSE}
+## Sun Mon Tue Wed Thu Fri Sat
+##      NY   2   3   4   5   6
+##   7   8   9  10  11  12  13
+##  14 MLK  16  17  18  19  20
+##  21  22  23  24  25  26  27
+##  28  29  30  31            
+calendar = data.frame(list( Sun = c('', 7, 14, 21, 28),
+                            Mon = c('NY', 8, 'MLK', 22, 29),
+                            Tue = c(2, 9, 16, 23, 30),
+                            Wed = c(3, 10, 17, 24, 31),
+                            Thu = c(4, 11, 18, 25, ''),
+                            Fri = c(5, 12, 19, 26, ''),
+                            Sat = c(6, 13, 20, 27, '')))
+calendar
+```
+
+Ignore the  ## symbols this was just so the above acts like a comment in R. 
+
+\textbf{Hint.} 1) The character object `""` for the spaces; 2) the option `row.names = FALSE` in `print` function.
+
+
+**Exercise 6.** *(5 pt)* Create a factor variable `grade` in `students3`, where the `score` variable is divided into $[90,100]$, $[80,90)$ and $[0,80)$ corresponding to A, B and C in `grade` respectively.
+
+**Hint.** Functions `cut` to obtain the grades and `transform` to obtain the students5 from stuents3.
+
+```{r, eval=T}
+id        <- rep(c("001","002","003"), 2)
+subj      <- rep(c("A","B"), each = 3)
+score     <- c(95, 97, 90, 80, 75, 84)
+students3 <- data.frame(id, subj, score)
+
+library(tidyverse, warn.conflicts = F)
+students5 <- students3 %>% mutate(grade = cut(score, breaks = c(0, 80, 90, 100),
+                                              include.lowest = T,
+                                              right = F))
+students5
+```
+
+
+**Exercise 7.** *(10 pt)* Without using the `var` and `scale` functions, compute the sample mean and sample covariance `X.var` of the data matrix `X` as in **Exercise 2.** More precisely, think of the $i$-th row of the matrix as observation of features for $i$-th individual. 
+
+ **a** Create a 4-dimensional vector called `mu` where the $i$-th row is the mean of the $i$-th column of $X$.  
+
+```{r eval=T}
+mu = c(rep(0, 4))
+mu = apply(X, MARGIN = 2, FUN = mean)
+mu
+```
+
+**b** Create a four-dimensional matrix `X.var` 
+
+\[X.var = \frac{1}{3} \sum_{i=1}^4 (\mathbf{x}_{i\cdot} - \mu)(\mathbf{x}_{i\cdot} - \mu)^T\]
+where $\mathbf{x}_{i.}$ is the $i$-th row. 
+
+```{r eval=T}
+dif = X - mu
+
+X.Var = (1/3) * dif * t(dif)
+X.Var
+```
+
+**Exercise 8.** *(10 pt)* Imagine that we wanted to make students aware for each of their subjects, the average score of all other students in that subject.  Create a variable (or column) called `score.mean` in `students3`, where next to each student and subject, the value of the score.mean is the average value of all students taking that subject.
+
+```{r eval=T}
+
+students3 = students3 %>% group_by(subj) %>% mutate(score.mean = mean(score))
+students3
+
+```
+
+
+**Exercise 9.** *(15 pt)* The bisection method if a root-finding algorithm from numerical analysis to find a root of a continuous function in an interval $[a,b]$ once you know that function has different signs at the end points of the interval (i.e. $f(a)< 0, f(b)>0$ or vice-versa). Read about this in the [Wikipedia link](https://en.wikipedia.org/wiki/Bisection_method).
+
+Write a function `bisect(f, lower, upper, tol = 1e-6)` to find the root of the univariate function `f` on the interval [`lower`, `upper`] with precision tolerance $\le$ `tol` (defaulted to be $10^{-6}$) via bisection, which returns a list consisting of `root`, `f.root` (`f` evaluated at `root`), `iter` (number of iterations) and `estim.prec` (estimated precision). Apply it to the function
+$$f(x) = x^3 - 2x - 1$$
+on $[1,2]$ with precision tolerance $10^{-6}$. Compare it with the built-in function `uniroot`.
+
+```{r, eval=T}
+
+f = function(x){x^3 - 2*x - 1}
+
+bisect = function(f, lower, upper, tol = 1e-6){
+  
+  iter = 1
+  while(iter <= 10000){
+    
+  c = (upper + lower) / 2
+  
+  f.root = f(x = c)
+  estim.prec = abs(0 - f.root)
+  if( estim.prec <= tol){
+   return( c(root = c, f.root = f.root,  iter = iter, estim.prec = estim.prec))
+  }
+  
+  else{
+    iter = iter + 1
+    
+    if(sign(f(upper)) != sign(f.root)){
+      
+      lower = c
+    }
+    
+    else{
+      upper = c
+      
+    }
+
+  }
+  iter = iter + 1
+  }
+  
+}
+
+bisect(f, lower = 1, upper = 2)
+uniroot(f, lower = 1, upper = 2)
+
+
+
+```
+
+
+**Exercise 10** *(16 pt)* In the folder for HW 1, you can find data on UNC salaries as a unc_salary_data.csv file (all of which are publicly available and scraped by Ryan Thornburg). 
+
+**a** Read the data using read.csv into a data frame called `salaries`
+
+
+```{r eval=T}
+
+salaries = read.csv(file = "~/Machine Learning/Hw1_Computational_Problem_Set/Hw1_Computational_Problem_Set/unc_salary_data.csv")
+
+```
+
+Use `str(salaries)` and `head(salaries)` to get an idea of the data set. 
+```{r, eval = T}
+str(salaries)
+head(salaries)
+```
+
+
+
+
+**b** Make a new data frame called `relevant` consisting only of the columns:  name, dept, age,totalsal. (Hint: consider the `subset` function). 
+
+```{r eval=T}
+relevant = salaries %>% dplyr::select(name, dept, age, totalsal)
+head(relevant)
+```
+
+**c** Make a new data frame called `top_200` consisting of the information in `relevant` of faculty who make more than \$200,000. 
+
+```{r eval=T}
+top_200 = relevant[which(relevant$totalsal > 200000),]
+head(top_200)
+```
+
+**d** Choose 3 departments that you are interested in. Compute the average salary of faculty in these 3 departments. 
+
+
+```{r eval=T}
+avg.dept = relevant %>% dplyr::filter(dept %in% c('Statistics and Operations Res',
+                                      'Philosophy',
+                                      'Mathematics'))  %>% group_by(dept) %>%
+                                      summarise(avg.sal = mean(totalsal))
+avg.dept
+```
+
+
+
+
+**Exercise 11.** *(10 pt)* `iris` is a built-in dataset in **R**. Check `?iris` for more information. This dataset has data on 50 flowers each from 3 species of Iris (setosa, versicolor, and virginica). Randomly divide `iris` into five subsets `iris1` to `iris5` (without replacement), thus each subset has 30 rows of the iris data and further  stratified to `iris$Species` (namely every subset should have 10 rows from each of the 3 species).
+
+```{r eva=T}
+
+library(caret)
+
+folds <- createFolds(iris$Species, k = 5)
+iris1 = iris[folds$Fold1,]
+iris2 = iris[folds$Fold2,]
+iris3 = iris[folds$Fold3,]
+iris4 = iris[folds$Fold4,]
+iris5 = iris[folds$Fold5,]
+
+
+iris.5fold <- list(iris1, iris2, iris3, iris4, iris5)
+str(iris.5fold)
+```
+
+
+**Exercise 12** *(10 pt)*
+
+**a** Recall the UNC salary data set. From the `salaries` data frame plot the number of CS faculty hired per year vs year. 
+
+```{r eva=T}
+
+cs = salaries %>% dplyr::filter(dept == 'Computer Science')
+cs$Hire.Year = substr(cs$hiredate, 1, 4)
+cs.summary = cs %>% group_by(Hire.Year) %>% summarise(Number = n())
+
+ggplot(cs.summary, aes(x= Hire.Year, y = Number)) + geom_point(size = 3) + xlab('Hire Year') + theme_bw() + 
+  theme(axis.text.x = element_text(size = 4),
+        title = element_text(size = 12),
+        axis.title = element_text(size = 12)) + 
+  ylab('Number of Faculty Hired') + 
+  ggtitle('Number of CS Faculty Hired by Year')
+```
+
+**b** Now add STOR, Math and Physics to the above plot
+
+```{r eva=T}
+
+cs = salaries %>% dplyr::filter(dept %in%  c('Computer Science',
+                                             'Statistics and Operations Res',
+                                             'Mathematics',
+                                             'Physics-Astronomy'))
+cs$Hire.Year = substr(cs$hiredate, 1, 4)
+cs.summary = cs %>% group_by(dept, Hire.Year) %>% summarise(Number = n())
+
+#cs.summary$Hire.Year = substr(cs.summary$Hire.Year, 3, 4)
+
+ggplot(cs.summary, aes(x= Hire.Year, y = Number,
+                       colour = dept)) + geom_point(size = 3) + xlab('Hire Year') + theme_bw() + 
+  theme(axis.text.x = element_blank(),
+         title = element_text(size = 12),
+        legend.position = 'none',
+        strip.text.x = element_text(size = 4),
+        axis.title = element_text(size = 12)) + facet_grid(. ~ `dept`) + 
+  ylab('Number of Faculty Hired') + ggtitle('Number of Faculty Hired by Year')
+```
+
+
+**Exercise 13.** *(15 pt)* The following code generates the ensuing plot about `Sepal.Length` in `iris`. Either modify the code above or use your own code to obtain similar plots with histograms, kernel density plots and normal density plots for the salary of faculty in CS, Math and Physics from UNC salary data. 
+
+
+```{r eva=T}
+
+non.stor = salaries %>% dplyr::filter(dept %in%  c('Computer Science',
+                                             'Mathematics',
+                                             'Physics-Astronomy'))
+opar <- par(mfrow = c(1,3))
+
+non.stor$dept = factor(non.stor$dept)
+for(l in levels(non.stor$dept))
+{
+ total_sal <- subset(non.stor, dept == l, select = totalsal)[[1]]
+  h <- hist(total_sal, sub = paste("dept =", l),  freq = FALSE)
+
+  par(new = TRUE)   # add to the current plot
+  # Empirical density curve
+  lines(density(total_sal),
+       xlim = range(h$breaks),  # to match the plotting range
+       col = "blue",
+       main = "", sub = "", xlab = "", ylab = ""    # to supress labels
+       )
+  par(new = TRUE)   # add to the current plot
+
+  # Normal density curve
+  curve(dnorm(x, mean = mean(total_sal), sd = sd(total_sal)),
+        xlim = range(h$breaks),  # to match the plotting range
+        col = "red",
+        main = "", sub = "", xlab = "", ylab = ""    # to supress labels
+        )
+
+  legend("topright",
+         legend = c("Kernel Density", "Normal Density"),
+         col = c("blue", "red"), lty = 1, cex = 0.5)
+}
+par(opar)
+```

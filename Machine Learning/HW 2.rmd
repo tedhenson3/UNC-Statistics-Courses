@@ -1,0 +1,382 @@
+---
+title: "STOR 565 Fall 2019 Homework 2"
+author: "Ted Henson"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+header-includes: \usepackage{amsgen,amsmath,amstext,amsbsy,amsopn,amssymb,mathabx,amsthm,bm,bbm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+## install.packages("ISLR")   # if you don't have this package, run it
+library("ISLR")
+library(MASS)
+```
+\theoremstyle{definition}
+\newtheorem*{hint}{Hint}
+
+\theoremstyle{remark}
+\newtheorem*{rmk}{Remark}
+
+*Remark.* This homework aims to help you go through the necessary preliminary from linear regression. Credits for **Theoretical Part** and **Computational Part** are in total 100 pts. If you receive more points that 100 (say via attempting extra credit/optional questions) then your score will be rounded to 100.  **If you are aiming to get full points, it is your duty to make sure you have attempted enough problems to get 100 pts**.  For **Computational Part**, please complete your answer in the **RMarkdown** file and summit your printed PDF (or doc or html) homework created by it.
+
+## Computational Part
+
+1. (*21 pt*) Consider the dataset "Boston" in predicting the crime rate at Boston with associated covariates.
+```{r Boston}
+head(Boston)
+```
+Suppose you would like to predict the crime rate with explantory variables
+
+* `medv`  - Median value of owner-occupied homes
+* `dis`   - Weighted mean of distances to employement centers
+* `indus` - Proportion of non-retail business acres
+
+Run the linear model using the code below. You can do so either by copying and pasting the code into the R console, or by clicking the green arrow in the code 'chunk' (grey box where the code is written).
+```{r lm}
+mod1 <- lm(crim ~ medv + dis + indus, data = Boston)
+summary(mod1)
+```
+Answer the following questions.
+
+(i) What do the following quantities that appear in the above output mean in the linear model? Provide a breif description.
+    + `t value` and `Pr(>|t|)` of `medv`
+    
+    **Answer:**
+    
+    The t value represents a parameters departure from its null hypothesis value (0) according to the student t distribution. P(>|t|) represents the cdf of the t distribution, and represents the likelihood that parameter is nonzero. In this case, the t value of -6.199 for medv corresponds to a 1.19e-09 chance that this nonzero coeffecient found occured due to random chance.
+
+    ***
+    
+    + `Multiple R-squared`
+    
+    **Answer:** 
+    
+    The Multiple R-squared is the percentage of variation explained by the independent variables (1 - (Model Sum of squares / Total Sum of squres)). In this case, our model found explains 24.04% of the total variation in our response variable.
+    
+    ***
+    + `F-statistic`, `DF` and corresponding `p-value`
+
+    **Answer:**
+    The F-statistic corresponds to the F distribution. It's p value represents the probablility that at least 1 coefficient is nonzero. In this case there is a  2.2e-16 that all of our coefficients are zero (these nonzero coefficients occured due to random chance).
+    
+    ***
+    
+
+(ii) Are the following sentences True of False? Briefly justify your answer.
+    + `indus` is not a significant predictor of crim at the 0.1 level.
+    
+    **Answer:** 
+    
+    False. The p value for the indus coefficient is less than .1 so it is a significant predictor at the .1 level.
+    
+    ***
+    + `Multiple R-squared` is preferred to `Adjusted R-squared` as it takes into account all the variables.
+    
+    **Answer:** 
+    
+    False. Multiple R-Squared does not consider how many variables you use at all. The adjusted R-squared takes into account that if you had more variables, the improvement in R squared could have happened due to random chance. 
+
+    ***    
+    + `medv` has a negative effect on the response.
+    
+    **Answer:**
+    
+    True. The coefficient for medv in our model is less than zero. Its p value is also less than the .01 (and lower) significance level so it most likely has a negative effect, and is significant.
+    
+    ***
+    + Our model residuals appear to be normally distributed.
+    
+    \begin{hint}
+      You need to access to the model residuals in justifying the last sentence. The following commands might help.
+    \end{hint}
+    ```{r, eval=TRUE}
+    # Obtain the residuals
+    res1 <- residuals(mod1)
+    
+    # Normal QQ-plot of residuals
+    plot(mod1, 2)
+    
+    # Conduct a Normality test via Shapiro-Wilk and Kolmogorov-Smirnov test
+    shapiro.test(res1)
+    ks.test(res1, "pnorm")
+    ```
+
+    **Answer:** 
+    False. There appear to be some large residuals on the upper quantile according to our standardized residual plot. Our Shapiro-Wilk and Kolmogoroz-Smirnoz tests give us extremely low p values that this residual distribution is normal.
+
+    ***
+ 
+ 
+2. (*25 pt*) For this exercise, we will use a dataset with summary information about American colleges and universities in 2013. The following code chunk retrieves it directly from the website, saving you from having to download it. The data is saved in the object called `amcoll`.
+
+```{r}
+setwd('~/Machine Learning')
+amcoll <- read.csv('College.csv')
+```
+
+Suppose that we are curious about what factors at a university play an important role in the room and board each semester (column `Room.Board`). Answer the following questions.
+ 
+(a) Based on some research into the area, you believe that the five most important predictors for the room and board amount are 
+
+\begin{itemize} 
+		\item the number of students who accepted admission {\it Accept}
+		\item the number of students who are currently enrolled {\it Enroll}
+		\item the out of state tuition for a semester {\it Outstate}
+		\item the average cost of books per year {\it Books}
+		\item the graduation rate of the students {\it Grad.Rate}
+	\end{itemize}
+ 
+ 	Plot a pairwise scatterplot of these variables along with the room and board cost, and comment on any trends. If you don't know how to plot such a scatterplot, see for example:
+ 	
+ 	
+- [http://www.sthda.com/english/wiki/scatter-plot-matrices-r-base-graphs](http://www.sthda.com/english/wiki/scatter-plot-matrices-r-base-graphs)
+ 	
+- [http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/ggplot2.html](http://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/ggplot2.html)
+
+ 	 Include your pairwise scatter plot as part of what you turn in. 
+ 	
+ 	
+```{r, eval=TRUE}
+library(caret)
+featurePlot(x=amcoll[,c('Accept', 'Enroll', 'Outstate',
+                        'Books', 'Grad.Rate')],
+            y = amcoll[, 'Room.Board'],
+            plot = 'scatter')
+```
+
+ Outstate and Grad.Rate appear to have the strongest and most positive relationship with Room.Board. Books, Accept, and Enroll may have a weak relationship.
+ 	
+ 	
+ 	
+(b) Run  a linear model of Room.Board on the 5 features above. Suppose we decide that $.01$ is our level of significance (so p-values have to be below $.01$ to count as significant). Discuss the findings of your linear model. In particular you should find that one of the features is **not** significant. 
+ 	
+```{r, eval=TRUE}
+
+college.mod = lm(Room.Board ~ Books + Grad.Rate + Accept + Enroll + Outstate,
+                 data = amcoll)
+summary(college.mod)
+```
+
+All of our features are below our .01 significance level (the probability that these nonzero coefficients happens due to random chance is close to zero). The Grad.Rate is above our significance level, so we keep our null hypothesis that this coefficient is zero. Our F statistic and corresponding p value below our .01 significance level tell us that at least one of our coefficients is nonzero. Our Multiple R-squared tells us that about 46% of the variation in our response can be explained by this model.
+
+
+(c) Write a function `kfold.cv.lm()` which performs the following. You can either write this from scracth or use any standard package in R or see the book for example code etc. 
+
+	**Input Arguments**: 
+	 
+		- k: integer number of disjoint sets
+		- seed: numeric value to set random number generator seed for reproducability
+		- X: $n \times p$ design matrix
+		- y: $n \times 1$ numeric response
+		- which.betas: $p \times 1$ logical specifying which predictors to be included in a regression
+	
+
+**Output**: 
+
+*Avg.MSPE* (average training error over your folds = $\frac{1}{10}\sum_{\mbox{fold } i  } \mbox{ prediction error using model obtained from remaining folds}$), 
+
+*Avg.MSE* $\frac{1}{10}\sum_{\mbox{fold } i  } \mbox{ average training error using model obtained from remaining folds}$)
+
+
+**Description**: Function performs k-fold cross-validation on the linear regression model of $y$ on $X$ for predictors *which.betas*. Returns both the average MSE of the training data and the average MSPE of the test data.
+
+
+```{r, eval=T}
+
+kfold.cv.lm = function(k = 10, seed = 545, x = amcoll,
+            y = 'Room.Board',
+            which.betas = c('Accept', 'Enroll', 'Outstate',
+                        'Books', 'Grad.Rate')){
+  
+  cols = c(y, which.betas)
+sub.data = x[,cols]
+
+
+my.formula = as.formula(paste(colnames(cols)[which(colnames(cols) == y)], ' ~ . ', sep = ''))
+
+
+
+sub.data = as.data.frame(sub.data)
+
+
+model = train(
+  as.formula(paste(y, ' ~ .', sep = '')),
+  data = sub.data,
+  method = 'lm',
+  trControl = trainControl(
+    method = "cv", 
+    number = k,
+  )
+)
+
+return(model)
+
+}
+
+
+
+```
+
+
+
+(d) Use your function `kfold.cv.lm()` to perform 10 folder cross validation on the college data for the following two models: 
+
+- the full model on the 5 features above; 
+- the model where you leave out the feature you found to be insgnificant in (b).
+
+```{r}
+full.model = kfold.cv.lm(k = 10, seed = 545, x = amcoll,
+            y = 'Room.Board',
+            which.betas = c('Accept', 'Enroll', 'Outstate',
+                        'Books', 'Grad.Rate'))
+full.model$resample
+
+
+reduced.model = kfold.cv.lm(k = 10, seed = 545, x = amcoll,
+            y = 'Room.Board',
+            which.betas = c('Accept', 'Enroll', 'Outstate',
+                        'Books'))
+
+reduced.model$resample
+
+full.model$results
+
+reduced.model$results
+
+
+```
+
+
+
+Which of the two is a ``better'' model and why?
+
+**Answer:** 
+
+The average RMSE in the folds was lower for our full model than the reduced model. The full model also had a higher average R squared; however, our reduced model had a lower Rsquared standard deviation (between each fold), lower RMAE SD, and lower RMSE SD. We conclude that our reduced model is better due to less variation between folds.
+
+
+
+***
+
+
+
+
+
+    
+3. (*25 pt*, Textbook Exercises 3.10) This question should be answered using the `Carseats` data set.
+
+```{r}
+head(Carseats)
+```
+
+(a) Fit a multiple regression model to predict `Sales` using `Price`, `Urban`, and `US`. Then, display a summary of the linear model using the `summary` function.
+
+
+```{r, eval=TRUE}
+
+mult.fit = lm(Sales ~ Price + Urban + US, data = Carseats)
+summary(mult.fit)
+```
+
+
+***
+
+(b) Write a one- or two-sentence interpretation of each coefficient in the model. Be careful: some of the variables in the model are qualitative!
+
+**Answer:**
+
+For every one unit increase in Price, our model decreases our prediction on sales by -0.05446.
+If Urban is Yes, than our model decreases our prediction on sales by -0.02192.
+If US is Yes, than our model increases our prediction on sales by 1.20057.
+
+
+***
+
+(c) Based on the output in part (a): For which of the predictors can you reject the null hypothesis $H_0 : \beta_j = 0$?
+
+**Answer:** 
+UrbanYes
+
+***
+
+(d) On the basis of your response to the previous question, a model with fewer predictors, using only the predictors for which there is evidence of association with the outcome. Display a summary of the linear model using the `summary` function.
+
+
+```{r, eval=TRUE}
+mult.fit = lm(Sales ~ Price  + US, data = Carseats)
+summary(mult.fit)
+
+
+```
+
+
+***
+
+(e) In a few sentences: How well do the models in (a) and (d) fit the data? Justify your response with information from the outputs of part (a) and (d).
+
+**Answer:** 
+
+Our reduced model has the exact same R-Squared (the percentage of total variation explained by the model is the same). Therefore, there is no reason to add the extra variable 'Urban' as it will mostly likely perform worse on future data.
+
+
+
+
+***
+
+
+
+
+
+
+
+
+
+4. (*14 pt Optional*) Note: this question is optinal and if you do want to do it, you will need to do the heavy lifting in terms of finding the data, cleaning the data etc. We will not be able to help you too much with respect to the above data "carpentry" issues. 
+
+Search online for a dataset that **you are interested in** where you think you can apply linear regression (i.e. your data has a continuous response and a bunch of real valued features).  Data sets from the book (ISLR) website are not allowed and more importantly try to find something that makes you curious to find the answers. 
+
+(a) Include a link and brief description of the data and the kinds of questions you are interested in exploring. 
+ESPN Data: http://www.espn.com/college-football/qbr
+Maxpreps Data: https://www.maxpreps.com/leaders/football/offense,passing/stat-leaders.htm
+247 Recruiting Data: https://247sports.com/Season/2020-Football/CompositeRecruitRankings/?InstitutionGroup=HighSchool&PositionGroup=QB
+
+
+
+(b) Plot a pairwise scatter plot between the response and some (at least 2) of the features. 
+
+
+```{r, eval=TRUE}
+
+library(readr)
+football <- read_csv("~/Data Journalism/Story Pitch/football.csv")
+
+featurePlot(x = football[, c('rating', 'yds_g',
+                          'pct',
+                          'td', 'yds')],
+            y = football$total_qbr)
+
+
+
+```
+
+
+(c) Run a linear model to learn the relationship between the features and the response and extract information from the lm function (what variables seem significant and what do not)? 
+
+```{r, eval=T}
+
+lm.mod = lm(total_qbr ~ rating + yds_g + pct + td + yds, data = football)
+summary(lm.mod)
+
+```
+
+Explain in words (e.g. to someone who has no math or stat background) your findings. 
+
+Some of our input variables may have a relationship to Total Quarterback Rating, but the correlations the model found could have occured due to random chance. We cannot definitively conclude that any of these variables are a predictor, but the ESPN rating (rating) is the most likely to have a true relationship to QBR.
+
+
+
+
+
