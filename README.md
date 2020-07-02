@@ -10,5 +10,8 @@ The folder contains the pdf files for my final exam and the corresponding SAS an
 ## Intro to Data Science (R) ##
 Introductory data science course in R. Use of ggplot, shiny, tidyverse, and other packages.
 
+## Machine Learning (R) ##
+Machine learning course with a mix of computational and theortical concepts. Folder contains computational problem sets.
+
 ## Methods of Data Analysis (R) ##
 Linear and logistic regression course in R. Click [here](https://htmlpreview.github.io/?https://github.com/tedhenson3/UNC-Statistics-Courses/blob/master/Methods%20of%20Data%20Analysis/Final_Exam.html) to see final exam.
